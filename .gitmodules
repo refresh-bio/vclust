@@ -1,3 +1,6 @@
 [submodule "src/3rd-party/kmer-db"]
 	path = src/3rd-party/kmer-db
 	url = https://github.com/refresh-bio/kmer-db
+[submodule "src/3rd-party/lz-ani"]
+	path = src/3rd-party/lz-ani
+	url = https://github.com/refresh-bio/lz-ani
