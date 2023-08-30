@@ -12,6 +12,9 @@ cd vclust-dev
 make -j
 ```
 
+## Wymagania (tymczasaowe)
+Zainstalowany moduł `sklearn` (scikit-learn)
+
 ## Przetwarzanie danych z zestawu viridica
 ```bash
 bin/kmer-db build -k 18 -t 32 data/viridic.txt data/viridic.kmer-db
