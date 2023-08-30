@@ -11,4 +11,7 @@ clean:
 	cd src/3rd-party/kmer-db; make clean;
 	cd src/3rd-party/lz-ani; make clean;
 	rm bin/*
-
+	rm data/*.a2a
+	rm data/*.csv
+	rm data/*.kmer-db
+	rm data/*.lz-ani
