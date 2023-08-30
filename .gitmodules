@@ -1,0 +1,3 @@
+[submodule "src/3rd-party/kmer-db"]
+	path = src/3rd-party/kmer-db
+	url = https://github.com/refresh-bio/kmer-db
