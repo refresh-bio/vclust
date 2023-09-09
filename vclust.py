@@ -312,6 +312,7 @@ def run_kmerdb_all2all(
 
 
 def run_lzani(
+        input_fasta: Path,
         infile_txt: typing.Union[Path, str],
         infile_all2all: typing.Union[Path, str],
         outfile_aln: typing.Union[Path, str],
@@ -323,6 +324,8 @@ def run_lzani(
     """Runs lz-ani to align genomic sequences.
 
     Args:
+        input_fasta (Path):
+            Path to the input FASTA file or directory with input FASTA files.
         infile_txt (Path or str):
             Path to the input text file listing FASTA files.
         infile_all2all (Path or str):
@@ -358,10 +361,14 @@ def run_lzani(
         '-aw', '16',
         '-am', '6',
         '-ar', '2',
-        '--in-file-names', f'{infile_txt}',
+
         '-out', f'{outfile_aln}',
         '-filter', f'{infile_all2all}', f'{kmer_count}'
     ]
+    if input_fasta.is_dir():
+        cmd.extend(['--in-file-names', f'{infile_txt}'])
+    else:
+        cmd.extend(['--one-file-name', f'{input_fasta}'])
     process = subprocess.run(
         cmd,  
         stdout=None if verbose else subprocess.DEVNULL, 
@@ -433,6 +440,7 @@ def align(
     ))
     # Run lz-ani.
     p = validate_process(run_lzani(
+        input_fasta=input_fasta,
         infile_txt=txt_path,
         infile_all2all=all2all_path,
         outfile_aln=outfile_aln,

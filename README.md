@@ -29,7 +29,7 @@ python3 src/cluster.py data/viridic.task data/
 1. Align virus genome sequences:
 
 ```bash
-./vlust.py align test/fna/ test/alignment.txt
+./vclust.py align test/fna/ test/alignment.txt
 ```
 
 2. calculate ANI from alignment:

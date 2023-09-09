@@ -9,7 +9,8 @@ class TestScript(unittest.TestCase):
 
     def setUp(self):
         self.dir = Path('test')
-        self.input_fasta = self.dir / 'fna'
+        self.input_fasta_dir = self.dir / 'fna'
+        self.input_fasta_file = self.dir / 'multifasta.fna'
         self.aln_path = self.dir / 'alignment.txt'
         self.ani_path = self.dir / 'ani.csv'
 
@@ -19,7 +20,7 @@ class TestScript(unittest.TestCase):
             f'./vclust.py',
             'align',
             '--threads', '1',
-            f'{self.input_fasta}',
+            f'{self.input_fasta_dir}',
             f'{self.aln_path}'
         ])
         self.assertEqual(p.returncode, 0)
@@ -40,7 +41,7 @@ class TestScript(unittest.TestCase):
             'align',
             '--threads', '1',
             '--kmer_count', '0', 
-            f'{self.input_fasta}',
+            f'{self.input_fasta_dir}',
             f'{self.aln_path}'
         ])
         self.assertEqual(p.returncode, 0)
@@ -50,13 +51,14 @@ class TestScript(unittest.TestCase):
             lines = fh.readlines()
         self.assertGreater(len(lines), 42)
 
-    def test_calcani(self):
-        """Default"""
+
+    def _test_calcani(self, input_fna):
+        """Private"""
         p = subprocess.run([
             f'./vclust.py',
             'align',
             '--threads', '1',
-            f'{self.input_fasta}',
+            f'{input_fna}',
             f'{self.aln_path}'
         ])
         p = subprocess.run([
@@ -83,10 +85,20 @@ class TestScript(unittest.TestCase):
             for line in fh:
                 cols = line.rstrip().split(',')
                 id1, id2 = sorted(cols[:2])
+                id1 = f'{id1}.fna' if not id1.endswith('.fna') else id1
+                id2 = f'{id2}.fna' if not id2.endswith('.fna') else id2
                 results[(id1, id2)] = ",".join(cols[2:])
 
         for id_pair in ref:
             self.assertTrue(results[id_pair], ref[id_pair])
+
+    def test_calcani_fastadir(self):
+        """Fasta dir"""
+        self._test_calcani(self.input_fasta_dir)
+
+    def test_calcani_fastafile(self):
+        """Single multifasta file"""
+        self._test_calcani(self.input_fasta_file)
 
     def tearDown(self):
         for file_to_remove in [self.aln_path, self.ani_path]:
