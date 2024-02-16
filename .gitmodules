@@ -1,6 +1,7 @@
-[submodule "src/3rd-party/kmer-db"]
-	path = src/3rd-party/kmer-db
-	url = https://github.com/refresh-bio/kmer-db
-[submodule "src/3rd-party/lz-ani"]
-	path = src/3rd-party/lz-ani
-	url = https://github.com/refresh-bio/lz-ani
+[submodule "3rd_party/kmer-db"]
+	path = 3rd_party/kmer-db
+	url = https://github.com/refresh-bio/kmer-db-dev.git
+	branch = feature/v2
+[submodule "3rd_party/rapid-cluster"]
+	path = 3rd_party/rapid-cluster
+	url = https://github.com/refresh-bio/rapid-cluster.git
