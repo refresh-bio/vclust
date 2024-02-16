@@ -1,17 +1,16 @@
 all: prep
 
 prep:
-	cd src/3rd-party/kmer-db; make -j;
-	cd src/3rd-party/lz-ani; make -j;
+	cd 3rd-party/kmer-db; make -j;
+	cd 3rd-party/lz-ani; make -j;
+	cd 3rd-party/rapid-cluster; make -j;
 	mkdir -p bin
-	cp src/3rd-party/kmer-db/kmer-db ./bin/kmer-db
-	cp src/3rd-party/lz-ani/lz-ani-0.1 ./bin/lz-ani
+	cp 3rd-party/kmer-db/kmer-db ./bin/kmer-db
+	cp 3rd-party/lz-ani/lz-ani ./bin/lz-ani
+	cp 3rd-party/rapid-cluseter/lz-ani ./bin/rapid-cluseter
 	
 clean:
 	cd src/3rd-party/kmer-db; make clean;
 	cd src/3rd-party/lz-ani; make clean;
+	cd src/3rd-party/rapid-cluster; make clean;
 	rm bin/*
-	rm data/*.a2a
-	rm data/*.csv
-	rm data/*.kmer-db
-	rm data/*.lz-ani
