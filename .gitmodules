@@ -11,3 +11,6 @@
 [submodule "3rd_party/isa-l"]
 	path = 3rd_party/isa-l
 	url = https://github.com/refresh-bio-dependencies/isa-l.git
+[submodule "3rd_party/ref-utils"]
+	path = 3rd_party/ref-utils
+	url = https://github.com/refresh-bio/ref-utils-dev.git
