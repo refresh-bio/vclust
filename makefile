@@ -9,7 +9,7 @@ prep:
 	cp 3rd_party/kmer-db/kmer-db ./bin/
 	cp 3rd_party/lz-ani/lz-ani ./bin/
 	cp 3rd_party/rapid-cluster/rapid-cluster ./bin/
-	cp 3rd_party/ref-utils/bin/multi-fasta-split ./bin/
+	cp 3rd_party/ref-utils/multi-fasta-split/multi-fasta-split ./bin/
 	
 clean:
 	cd 3rd_party/kmer-db; make clean;
