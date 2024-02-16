@@ -8,3 +8,6 @@
 [submodule "3rd_party/lz-ani"]
 	path = 3rd_party/lz-ani
 	url = https://github.com/refresh-bio/LZ-ANI.git
+[submodule "3rd_party/isa-l"]
+	path = 3rd_party/isa-l
+	url = https://github.com/refresh-bio-dependencies/isa-l.git
