@@ -3,7 +3,7 @@ all: prep
 prep:
 	cd 3rd_party/kmer-db; make -j;
 	cd 3rd_party/lz-ani; make -j;
-	cd 3rd_party/rapid-cluster; make -j;
+	cd 3rd_party/rapid-cluster; make -j STATIC_LINK=true;
 	cd 3rd_party/ref-utils; make -j;
 	mkdir -p bin
 	cp 3rd_party/kmer-db/kmer-db ./bin/
