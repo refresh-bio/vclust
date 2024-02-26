@@ -348,19 +348,24 @@ def get_parser() -> argparse.ArgumentParser:
         'numerical cluster identifiers. The representative genome is selected '
         'as the one with the longest sequence. [%(default)s]'
     )
+    choices = [
+        'single', 'complete', 'uclust', 'cd-hit',
+        'set-cover', 'connected-component', 'leiden'
+    ]
     cluster_parser.add_argument(
         '--algorithm',
         metavar='<str>',
         dest="algorithm",
-        choices=['single', 'complete', 'uclust', 'cdhit', 'mmseqs0', 'mmseqs1'],
+        choices=choices,
         default='single',
         help='Clustering algorithm [%(default)s]\n'
         '* single: Single-linkage\n'
         '* complete: Complete-linkage\n'
         '* uclust: UCLUST\n'
-        '* cdhit: Greedy incremental\n'
-        '* mmseqs0: Greedy set-cover\n'
-        '* mmseqs1: Connected component (BLASTclust)'
+        '* cd-hit: Greedy incremental\n'
+        '* set-cover: Greedy set-cover (MMseqs2)\n'
+        '* connected-component: Connected component (BLASTclust)\n'
+        '* leiden: the Leiden algorithm'
     )
     choices = ['tani','gani','ani']
     cluster_parser.add_argument(
@@ -843,14 +848,12 @@ def run_rapidcluster(
         'idx1', 'idx2',
         '--distance-col',
         f'{metric}',
-        '--threshold',
-        f'{metric_threshold}',
         '--similarity',
         '--numeric-ids',
     ]
     cols = [('tani', tani), ('gani', gani), ('ani', ani), ('cov', cov)]
     for name, value in cols:
-        if value > 0 and name != metric:
+        if value > 0:
             cmd.extend(['--min', f'{name}', f'{value}'])
     if num_alns > 0:
         cmd.extend(['--max', 'num_alns', f'{num_alns}'])

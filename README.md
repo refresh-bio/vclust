@@ -26,7 +26,7 @@ vclust offers support for seven clustering algorithms tailored to various scenar
 - Complete-linkage
 - UCLUST
 - CD-HIT (Greedy incremental)
-- BLASTclust
+- Connected component (BLASTclust)
 - Greedy set cover (adopted from MMseqs2)
 - Leiden algorithm
 
