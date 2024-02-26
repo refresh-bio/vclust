@@ -171,10 +171,10 @@ vclustr supports seven clustering algorithms (`--algorithm`):
 1. `single`: Single-linkage clustering
 2. `complete`: Complete-linkage clustering
 3. `uclust`: UCLUST-like clustering
-4. `cdhit`: Greedy incremental clustering
-5. `leiden`: Leiden algorithm
-6. `mmseqs0`: Set-Cover (greedy)
-7. `mmseqs1`: Connected component (BLASTclust)
+4. `cd-hit`: Greedy incremental clustering
+5. `set-cover`: Set-Cover (greedy)
+6. `connected-component`: Connected component (BLASTclust)
+7. `leiden`: the Leiden algorithm
 
 Clustering can use one of three similarity measures (`--metric`): `tani`, `gani`, or `ani`. The user-provided value of the selected similarity measure serves as the minimum similarity threshold for connecting genomes.
 
