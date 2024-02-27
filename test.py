@@ -33,8 +33,8 @@ def test_dir():
 
 @pytest.mark.parametrize('input,params,error_msg',[
     (FASTA_DIR, ['--batch-size', '4'], 'error: --batch-size'),
-    (FASTA_DIR, ['--min-ident', '95'], 'error: --min-ident'),
-    (FASTA_DIR, ['--k', '2'], 'error: --k'),
+    (FASTA_DIR, ['--min-ident', '95'], 'between 0 and 1'),
+    (FASTA_DIR, ['--k', '2'], 'invalid choice'),
 ])
 def test_parser_error_prefilter(test_dir, input, params, error_msg):
     out_file = test_dir.joinpath('filter.txt')
@@ -57,7 +57,7 @@ def test_parser_error_prefilter(test_dir, input, params, error_msg):
 
 
 @pytest.mark.parametrize('params,error_msg',[
-    (['--out-tani', '40'], 'error: --out-tani must be between'),
+    (['--out-tani', '40'], 'between 0 and 1'),
 ])
 def test_parser_error_align(test_dir, params, error_msg):
     out_file = test_dir.joinpath('ani.tsv')
@@ -81,7 +81,7 @@ def test_parser_error_align(test_dir, params, error_msg):
 
 @pytest.mark.parametrize('params,error_msg',[
     (['--metric', 'tani'], 'error: tani threshold'),
-    (['--metric', 'ani', '--ani', '95'], '--ani must be between 0 and 1'),
+    (['--metric', 'ani', '--ani', '95'], 'between 0 and 1'),
 ])
 def test_parser_error_cluster(test_dir, params, error_msg):
     out_file = test_dir.joinpath('clusters.tsv')

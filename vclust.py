@@ -41,9 +41,23 @@ ALIGN_OUTFMT = {
 
 def get_parser() -> argparse.ArgumentParser:
     """Return an argument parser."""
+
+    def input_path_type(value):
+        path = Path(value)
+        if not path.exists():
+            msg = f'input does not exist: {value}'
+            raise argparse.ArgumentTypeError(msg)
+        return path
+
+    def ranged_float_type(value):
+        f = float(value)
+        if f < 0 or f > 1:
+            raise argparse.ArgumentTypeError('must be between 0 and 1')
+        return f
+
     parser = argparse.ArgumentParser(
         description=f'%(prog)s v.{__version__}: calculate ANI and cluster '
-                     'virus (meta)genome sequences',
+        'virus (meta)genome sequences',
         add_help=False,
     )
     parser.add_argument(
@@ -71,6 +85,7 @@ def get_parser() -> argparse.ArgumentParser:
     prefilter_parser.add_argument(
         '-i', '--in',
         metavar='<file>',
+        type=input_path_type,
         dest='input',
         help='Input FASTA file or directory with FASTA files',
         required=True
@@ -78,6 +93,7 @@ def get_parser() -> argparse.ArgumentParser:
     prefilter_parser.add_argument(
         '-o', '--out',
         metavar='<file>',
+        type=Path,
         dest='output',
         help='Output filename',
         required=True
@@ -87,6 +103,7 @@ def get_parser() -> argparse.ArgumentParser:
         metavar="<int>",
         type=int,
         default=18,
+        choices=range(15, 31),
         help="Size of k-mer for kmer-db [%(default)s]"
     )
     prefilter_parser.add_argument(
@@ -108,7 +125,7 @@ def get_parser() -> argparse.ArgumentParser:
     prefilter_parser.add_argument(
         '--min-ident',
         metavar="<float>",
-        type=float,
+        type=ranged_float_type,
         default=0.1,
         help='Filter genome pairs based on minimum sequence identity of '
         'the shorter sequence (0-1) [%(default)s]'
@@ -130,6 +147,7 @@ def get_parser() -> argparse.ArgumentParser:
     prefilter_parser.add_argument(
         '--bin',
         metavar='<file>',
+        type=Path,
         dest="bin_kmerdb",
         default=f'{BIN_KMERDB.relative_to(VCLUST_DIR)}',
         help='Path to the kmer-db binary [%(default)s]'
@@ -137,6 +155,7 @@ def get_parser() -> argparse.ArgumentParser:
     prefilter_parser.add_argument(
         '--bin-fasta',
         metavar='<file>',
+        type=Path,
         dest="bin_fastasplit",
         default=f'{BIN_FASTASPLIT.relative_to(VCLUST_DIR)}',
         help='Path to the multi-fasta-split binary [%(default)s]'
@@ -163,6 +182,7 @@ def get_parser() -> argparse.ArgumentParser:
     align_parser.add_argument(
         '-i', '--in',
         metavar='<file>',
+        type=input_path_type,
         dest='input',
         help='Input FASTA file or directory with FASTA files',
         required=True
@@ -170,6 +190,7 @@ def get_parser() -> argparse.ArgumentParser:
     align_parser.add_argument(
         '-o', '--out',
         metavar='<file>',
+        type=Path,
         dest='output',
         help='Output filename',
         required=True
@@ -187,7 +208,7 @@ def get_parser() -> argparse.ArgumentParser:
         '--out-ani',
         dest='ani',
         metavar='<float>',
-        type=float,
+        type=ranged_float_type,
         default=0,
         help='Min. ANI to output (0-1) [%(default)s]'
     )
@@ -195,7 +216,7 @@ def get_parser() -> argparse.ArgumentParser:
         '--out-tani',
         dest='tani',
         metavar='<float>',
-        type=float,
+        type=ranged_float_type,
         default=0,
         help='Min. tANI to output (0-1) [%(default)s]'
     )
@@ -203,7 +224,7 @@ def get_parser() -> argparse.ArgumentParser:
         '--out-gani',
         dest='gani',
         metavar='<float>',
-        type=float,
+        type=ranged_float_type,
         default=0,
         help='Min. gANI to output (0-1) [%(default)s]'
     )
@@ -211,13 +232,14 @@ def get_parser() -> argparse.ArgumentParser:
         '--out-cov',
         dest='cov',
         metavar='<float>',
-        type=float,
+        type=ranged_float_type,
         default=0,
         help='Min. coverage to output (0-1) [%(default)s]'
     )
     align_parser.add_argument(
         '--filter',
         metavar='<file>',
+        type=input_path_type,
         dest="filter_path",
         help='Path to filter file (output of prefilter)'
     )
@@ -225,7 +247,7 @@ def get_parser() -> argparse.ArgumentParser:
         '--filter-threshold',
         metavar='<float>',
         dest='filter_threshold',
-        type=float,
+        type=ranged_float_type,
         default=0,
         help='Align genome pairs above the threshold (0-1) [%(default)s]'
     )
@@ -240,6 +262,7 @@ def get_parser() -> argparse.ArgumentParser:
     align_parser.add_argument(
         '--bin',
         metavar='<file>',
+        type=Path,
         dest='bin_lzani',
         default=f'{BIN_LZANI.relative_to(VCLUST_DIR)}',
         help='Path to the lz-ani binary [%(default)s]'
@@ -322,6 +345,7 @@ def get_parser() -> argparse.ArgumentParser:
     cluster_parser.add_argument(
         '-i', '--in',
         metavar='<file>',
+        type=input_path_type,
         dest='input',
         help='Input file with ANI metrics (tsv)',
         required=True
@@ -329,6 +353,7 @@ def get_parser() -> argparse.ArgumentParser:
     cluster_parser.add_argument(
         '-o', '--out',
         metavar='<file>',
+        type=Path,
         dest='output',
         help='Output filename',
         required=True
@@ -336,6 +361,7 @@ def get_parser() -> argparse.ArgumentParser:
     cluster_parser.add_argument(
         '--ids',
         metavar='<file>',
+        type=input_path_type,
         dest='ids_path',
         help='Input file with sequence identifiers (tsv)',
         required=True
@@ -348,10 +374,7 @@ def get_parser() -> argparse.ArgumentParser:
         'numerical cluster identifiers. The representative genome is selected '
         'as the one with the longest sequence. [%(default)s]'
     )
-    choices = [
-        'single', 'complete', 'uclust', 'cd-hit',
-        'set-cover', 'connected-component', 'leiden'
-    ]
+    choices = ['single', 'complete', 'uclust', 'cd-hit', 'set-cover', 'leiden']
     cluster_parser.add_argument(
         '--algorithm',
         metavar='<str>',
@@ -359,13 +382,12 @@ def get_parser() -> argparse.ArgumentParser:
         choices=choices,
         default='single',
         help='Clustering algorithm [%(default)s]\n'
-        '* single: Single-linkage\n'
+        '* single: Single-linkage (connected component)\n'
         '* complete: Complete-linkage\n'
         '* uclust: UCLUST\n'
         '* cd-hit: Greedy incremental\n'
         '* set-cover: Greedy set-cover (MMseqs2)\n'
-        '* connected-component: Connected component (BLASTclust)\n'
-        '* leiden: the Leiden algorithm'
+        '* leiden: Leiden algorithm'
     )
     choices = ['tani','gani','ani']
     cluster_parser.add_argument(
@@ -381,7 +403,7 @@ def get_parser() -> argparse.ArgumentParser:
         '--tani',
         metavar='<float>',
         dest='tani',
-        type=float,
+        type=ranged_float_type,
         default=0,
         help='Min. total ANI (0-1) [%(default)s]\n'
     )
@@ -389,7 +411,7 @@ def get_parser() -> argparse.ArgumentParser:
         '--gani',
         metavar='<float>',
         dest='gani',
-        type=float,
+        type=ranged_float_type,
         default=0,
         help='Min. global ANI (0-1) [%(default)s]\n'
     )
@@ -397,7 +419,7 @@ def get_parser() -> argparse.ArgumentParser:
         '--ani',
         metavar='<float>',
         dest='ani',
-        type=float,
+        type=ranged_float_type,
         default=0,
         help='Min. ANI (0-1) [%(default)s]\n'
     )
@@ -405,7 +427,7 @@ def get_parser() -> argparse.ArgumentParser:
         '--cov',
         metavar='<float>',
         dest='cov',
-        type=float,
+        type=ranged_float_type,
         default=0,
         help='Min. coverage (0-1) [%(default)s]\n'
     )
@@ -421,6 +443,7 @@ def get_parser() -> argparse.ArgumentParser:
     cluster_parser.add_argument(
         '--bin',
         metavar='<file>',
+        type=Path,
         dest="bin_rapidcluster",
         default=f'{BIN_RAPIDCLUSTER.relative_to(VCLUST_DIR)}',
         help='Path to the rapid-cluster binary [%(default)s]'
@@ -444,11 +467,11 @@ def get_uuid() -> str:
     return f'vclust-{str(uuid.uuid4().hex)[:16]}'
 
 
-def verify_binary(bin_path: typing.Union[str, Path]) -> Path:
+def validate_binary(bin_path: typing.Union[str, Path]) -> Path:
     """Verify if a binary file exists and is executable.
 
     Args:
-        bin_path (str or Path): The path to the executable binary file.
+        bin_path (str or Path): Path to the executable binary file.
 
     Returns:
         Path to the binary file.
@@ -467,15 +490,6 @@ def verify_binary(bin_path: typing.Union[str, Path]) -> Path:
         exit(f'error: executable not found: {bin_path.resolve()}')
     return bin_path
 
-
-def validate_args(args, parser):
-    args.input = Path(args.input)
-    if not args.input.exists():
-        parser.error(f'input does not exist: {args.input}')
-    args.output = Path(args.output)
-    return args
-
-
 def validate_args_fasta_input(args, parser):
     args.is_multifasta = True
     args.fasta_paths = [args.input]
@@ -489,39 +503,14 @@ def validate_args_fasta_input(args, parser):
     return args
 
 
-def validate_args_prefilter(args, parser):
-    if args.min_ident < 0 or args.min_ident > 1:
-        parser.error('--min-ident must be between 0 and 1, inclusive.')
-    if args.k < 15 or args.k > 30:
-        parser.error(f'--k must be in range 15-30')       
+def validate_args_prefilter(args, parser): 
     if args.batch_size and args.input.is_dir():
         parser.error('--batch-size only handles a multi-fasta file'
             ', not a directory.')
     return args
 
 
-def validate_args_align(args, parser):
-    if args.filter_path:
-        args.filter_path = Path(args.filter_path)
-        if not args.filter_path.exists():
-            parser.error(f'file does not exist: {args.filter_path}')
-
-    args_dict = vars(args)
-    options = ['tani', 'gani', 'ani', 'cov']
-    # Verify if option values are within the appropriate range.
-    for name in options:
-        value = args_dict[name]
-        if value < 0 or value > 1:
-            parser.error(f'--out-{name} must be between 0 and 1, inclusive.')
-    return args
-
-
 def validate_args_cluster(args, parser):
-    # Check if the ids file exists.
-    args.ids_path = Path(args.ids_path)
-    if not args.ids_path.exists():
-        parser.error(f'file does not exist: {args.ids_path}')
-
     # Validate the ani.tsv file.
     with open(args.input) as fh:
         header = fh.readline().split()
@@ -535,14 +524,8 @@ def validate_args_cluster(args, parser):
             parser.error(f'{args.metric} threshold must be above 0. '
                 f'Specify the option: --{args.metric}')
         
-        options = ['tani', 'gani', 'ani', 'cov', 'num_alns']
-        # Verify if option values are within the appropriate range.
-        for name in options[:-1]:
-            value = args_dict[name]
-            if value < 0 or value > 1:
-                parser.error(f'--{name} must be between 0 and 1, inclusive.')
-
         # Verify presence of columns for options with thresholds greater than 0.
+        options = ['tani', 'gani', 'ani', 'cov', 'num_alns']
         for name in options:
             value = args_dict[name]
             if value != 0 and name not in header:
@@ -564,7 +547,6 @@ def validate_process(func):
 
 @validate_process
 def run_fastasplit(input_fasta, out_dir, n, verbose, bin_path = BIN_FASTASPLIT):
-    # Run kmer-db build.
     cmd = [
         f"{bin_path}", 
         "-n", f"{n}",
@@ -897,12 +879,11 @@ fmt = lambda prog: CustomHelpFormatter(prog)
 def main():
     parser = get_parser()
     args = parser.parse_args()
-    args = validate_args(args, parser)
 
     # Prefilter
     if args.command == 'prefilter':
         
-        args.bin_kmerdb = verify_binary(args.bin_kmerdb)
+        args.bin_kmerdb = validate_binary(args.bin_kmerdb)
         args = validate_args_prefilter(args, parser)
         args = validate_args_fasta_input(args, parser)
 
@@ -916,7 +897,7 @@ def main():
         else:
             # Split multi-fasta file.
             if args.batch_size:
-                args.bin_fastasplit = verify_binary(args.bin_fastasplit)
+                args.bin_fastasplit = validate_binary(args.bin_fastasplit)
                 p = run_fastasplit(
                     input_fasta=args.input, 
                     out_dir=out_dir,
@@ -988,8 +969,7 @@ def main():
 
     # Align
     elif args.command == 'align':
-        args.bin_lzani = verify_binary(args.bin_lzani)
-        args = validate_args_align(args, parser)
+        args.bin_lzani = validate_binary(args.bin_lzani)
         args = validate_args_fasta_input(args, parser)
 
         out_dir = Path(args.output).parent / get_uuid()
@@ -1027,7 +1007,7 @@ def main():
     # Cluster
     elif args.command == 'cluster':
 
-        args.bin_rapidcluster = verify_binary(args.bin_rapidcluster)
+        args.bin_rapidcluster = validate_binary(args.bin_rapidcluster)
         args = validate_args_cluster(args, parser)
 
         # Run rapid-cluster

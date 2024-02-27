@@ -26,7 +26,6 @@ vclust offers support for seven clustering algorithms tailored to various scenar
 - Complete-linkage
 - UCLUST
 - CD-HIT (Greedy incremental)
-- Connected component (BLASTclust)
 - Greedy set cover (adopted from MMseqs2)
 - Leiden algorithm
 
@@ -173,8 +172,7 @@ vclustr supports seven clustering algorithms (`--algorithm`):
 3. `uclust`: UCLUST-like clustering
 4. `cd-hit`: Greedy incremental clustering
 5. `set-cover`: Set-Cover (greedy)
-6. `connected-component`: Connected component (BLASTclust)
-7. `leiden`: the Leiden algorithm
+6. `leiden`: the Leiden algorithm
 
 Clustering can use one of three similarity measures (`--metric`): `tani`, `gani`, or `ani`. The user-provided value of the selected similarity measure serves as the minimum similarity threshold for connecting genomes.
 
