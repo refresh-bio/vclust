@@ -293,7 +293,7 @@ NC_010807.ref	NC_010807.alt2
 ```bash
 # Cluster contigs into vOTUs using the Leiden algorithm.
 ./vclust cluster -i ani.tsv -o clusters.tsv --ids ani.ids.tsv --algorithm leiden \
---algorithm-param 0.7 --metric ani --ani 0.95 --cov 0.85
+--leiden-resolution 0.7 --metric ani --ani 0.95 --cov 0.85
 ```
 
 ### Calculate pairwise similarities between all-versus-all genomes

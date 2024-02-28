@@ -216,7 +216,14 @@ def test_workflow_prefilter_align(test_dir, input, params):
 
 
 
-def test_cluster_default(test_dir):
+@pytest.mark.parametrize('algorithm',[
+    'single',
+    'complete',
+    'uclust',
+    'cd-hit',
+    'set-cover',
+])
+def test_cluster_algorithm(test_dir, algorithm):
     out_file = test_dir / 'clusters.tsv'
     cmd = [
         f'{VCLUST.resolve()}',
@@ -228,7 +235,7 @@ def test_cluster_default(test_dir):
         '-o',
         f'{out_file}',
         '--algorithm',
-        'single',
+        f'{algorithm}',
         '--metric',
         'tani',
         '--tani',

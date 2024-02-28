@@ -4,10 +4,10 @@
 https://github.com/refresh-bio/vclust-dev
 """
 
-from pathlib import Path
 import argparse
 import csv
 import multiprocessing
+import pathlib
 import shutil
 import subprocess
 import sys
@@ -18,7 +18,7 @@ __version__ = '0.5'
 
 DEFAULT_THREAD_COUNT = min(multiprocessing.cpu_count(), 64)
 
-VCLUST_DIR = Path(__file__).resolve().parent
+VCLUST_DIR = pathlib.Path(__file__).resolve().parent
 
 # Default paths to third-party binaries
 BIN_DIR = VCLUST_DIR / 'bin'
@@ -42,8 +42,10 @@ ALIGN_OUTFMT = {
 def get_parser() -> argparse.ArgumentParser:
     """Return an argument parser."""
 
+    fmt = lambda prog: CustomHelpFormatter(prog, max_help_position=32)
+
     def input_path_type(value):
-        path = Path(value)
+        path = pathlib.Path(value)
         if not path.exists():
             msg = f'input does not exist: {value}'
             raise argparse.ArgumentTypeError(msg)
@@ -86,15 +88,15 @@ def get_parser() -> argparse.ArgumentParser:
         '-i', '--in',
         metavar='<file>',
         type=input_path_type,
-        dest='input',
+        dest='input_path',
         help='Input FASTA file or directory with FASTA files',
         required=True
     )
     prefilter_parser.add_argument(
         '-o', '--out',
         metavar='<file>',
-        type=Path,
-        dest='output',
+        type=pathlib.Path,
+        dest='output_path',
         help='Output filename',
         required=True
     )
@@ -147,7 +149,7 @@ def get_parser() -> argparse.ArgumentParser:
     prefilter_parser.add_argument(
         '--bin',
         metavar='<file>',
-        type=Path,
+        type=pathlib.Path,
         dest="bin_kmerdb",
         default=f'{BIN_KMERDB.relative_to(VCLUST_DIR)}',
         help='Path to the kmer-db binary [%(default)s]'
@@ -155,7 +157,7 @@ def get_parser() -> argparse.ArgumentParser:
     prefilter_parser.add_argument(
         '--bin-fasta',
         metavar='<file>',
-        type=Path,
+        type=pathlib.Path,
         dest="bin_fastasplit",
         default=f'{BIN_FASTASPLIT.relative_to(VCLUST_DIR)}',
         help='Path to the multi-fasta-split binary [%(default)s]'
@@ -183,15 +185,15 @@ def get_parser() -> argparse.ArgumentParser:
         '-i', '--in',
         metavar='<file>',
         type=input_path_type,
-        dest='input',
+        dest='input_path',
         help='Input FASTA file or directory with FASTA files',
         required=True
     )
     align_parser.add_argument(
         '-o', '--out',
         metavar='<file>',
-        type=Path,
-        dest='output',
+        type=pathlib.Path,
+        dest='output_path',
         help='Output filename',
         required=True
     )
@@ -262,7 +264,7 @@ def get_parser() -> argparse.ArgumentParser:
     align_parser.add_argument(
         '--bin',
         metavar='<file>',
-        type=Path,
+        type=pathlib.Path,
         dest='bin_lzani',
         default=f'{BIN_LZANI.relative_to(VCLUST_DIR)}',
         help='Path to the lz-ani binary [%(default)s]'
@@ -346,15 +348,15 @@ def get_parser() -> argparse.ArgumentParser:
         '-i', '--in',
         metavar='<file>',
         type=input_path_type,
-        dest='input',
+        dest='input_path',
         help='Input file with ANI metrics (tsv)',
         required=True
     )
     cluster_parser.add_argument(
         '-o', '--out',
         metavar='<file>',
-        type=Path,
-        dest='output',
+        type=pathlib.Path,
+        dest='output_path',
         help='Output filename',
         required=True
     )
@@ -441,9 +443,16 @@ def get_parser() -> argparse.ArgumentParser:
         'genome pairs are allowed. [%(default)s]'
     )
     cluster_parser.add_argument(
+        '--leiden-resolution',
+        metavar='<float>',
+        type=ranged_float_type,
+        default=0.7,
+        help='Resolution parameter for the Leiden algorithm [%(default)s]\n'
+    )
+    cluster_parser.add_argument(
         '--bin',
         metavar='<file>',
-        type=Path,
+        type=pathlib.Path,
         dest="bin_rapidcluster",
         default=f'{BIN_RAPIDCLUSTER.relative_to(VCLUST_DIR)}',
         help='Path to the rapid-cluster binary [%(default)s]'
@@ -467,11 +476,11 @@ def get_uuid() -> str:
     return f'vclust-{str(uuid.uuid4().hex)[:16]}'
 
 
-def validate_binary(bin_path: typing.Union[str, Path]) -> Path:
+def validate_binary(bin_path: pathlib.Path) -> pathlib.Path:
     """Verify if a binary file exists and is executable.
 
     Args:
-        bin_path (str or Path): Path to the executable binary file.
+        bin_path (Path): Path to the executable binary file.
 
     Returns:
         Path to the binary file.
@@ -479,8 +488,7 @@ def validate_binary(bin_path: typing.Union[str, Path]) -> Path:
     Raises:
         SystemExit: If the binary file is not found.
 
-    """    
-    bin_path = Path(bin_path) if isinstance(bin_path, str) else bin_path
+    """
     try:
         subprocess.run(
             [f'{bin_path}'],
@@ -492,19 +500,19 @@ def validate_binary(bin_path: typing.Union[str, Path]) -> Path:
 
 def validate_args_fasta_input(args, parser):
     args.is_multifasta = True
-    args.fasta_paths = [args.input]
-    if args.input.is_dir():
+    args.fasta_paths = [args.input_path]
+    if args.input_path.is_dir():
         args.is_multifasta = False
         args.fasta_paths = sorted(
-            f for f in args.input.iterdir() if f.is_file()
+            f for f in args.input_path.iterdir() if f.is_file()
         )
     if not args.is_multifasta and (n := len(args.fasta_paths)) < 2:
-        parser.error(f'too few fasta files ({n}) in {args.input}')
+        parser.error(f'too few fasta files ({n}) in {args.input_path}')
     return args
 
 
 def validate_args_prefilter(args, parser): 
-    if args.batch_size and args.input.is_dir():
+    if args.batch_size and args.input_path.is_dir():
         parser.error('--batch-size only handles a multi-fasta file'
             ', not a directory.')
     return args
@@ -512,10 +520,11 @@ def validate_args_prefilter(args, parser):
 
 def validate_args_cluster(args, parser):
     # Validate the ani.tsv file.
-    with open(args.input) as fh:
+    with open(args.input_path) as fh:
         header = fh.readline().split()
         if 'idx1' not in header and 'idx2' not in header:
-            parser.error(f'missing columns `idx1` and `idx2` in {args.input}')
+            parser.error(
+                f'missing columns `idx1` and `idx2` in {args.input_path}')
 
         args_dict = vars(args)
         args.metric_threshold = args_dict.get(args.metric, 0)
@@ -529,7 +538,7 @@ def validate_args_cluster(args, parser):
         for name in options:
             value = args_dict[name]
             if value != 0 and name not in header:
-                parser.error(f'missing column `{name}` in {args.input}')
+                parser.error(f'missing column `{name}` in {args.input_path}')
     return args
 
 
@@ -565,14 +574,14 @@ def run_fastasplit(input_fasta, out_dir, n, verbose, bin_path = BIN_FASTASPLIT):
 
 @validate_process
 def run_kmerdb_build(
-        input_paths: Path,
-        txt_path: typing.Union[Path, str],
-        db_path: typing.Union[Path, str],
+        input_paths: pathlib.Path,
+        txt_path: pathlib.Path,
+        db_path: pathlib.Path,
         is_multisample_fasta: bool,
         kmer_size: int,
         num_threads: int,
         verbose: bool = False,
-        bin_path: typing.Union[Path, str] = BIN_KMERDB
+        bin_path: pathlib.Path = BIN_KMERDB
     ) -> subprocess.CompletedProcess:
     """Runs kmer-db build to create a database from FASTA file(s).
 
@@ -589,7 +598,7 @@ def run_kmerdb_build(
             Number of threads to use in kmer-db.
         verbose (bool):
             Whether to display verbose output.
-        BIN_KMERDB (Path or str):
+        bin_path (Path or str):
             Path to the kmer-db executable.
 
     Returns:
@@ -625,11 +634,11 @@ def run_kmerdb_build(
 def run_kmerdb_all2all(
         db_paths,
         db_list_path,
-        outfile_all2all: typing.Union[Path, str],
+        outfile_all2all: pathlib.Path,
         kmer_count: int,
         num_threads: int,
         verbose: bool = False,
-        bin_path: typing.Union[Path, str] = BIN_KMERDB
+        bin_path: pathlib.Path = BIN_KMERDB
     ) -> subprocess.CompletedProcess:
     """Runs kmer-db all2all to find shared k-mers between genomic sequences.
 
@@ -675,11 +684,11 @@ def run_kmerdb_all2all(
 
 @validate_process
 def run_kmerdb_distance(
-        infile_all2all: typing.Union[Path, str],
+        infile_all2all: pathlib.Path,
         min_value: float,
         num_threads: int,
         verbose: bool = False,
-        bin_path: typing.Union[Path, str] = BIN_KMERDB
+        bin_path: pathlib.Path = BIN_KMERDB
     ) -> subprocess.CompletedProcess:
     """Runs kmer-db all2all to find shared k-mers between genomic sequences.
 
@@ -741,7 +750,7 @@ def run_lzani(
         ar,
         num_threads: int,
         verbose: bool = False,
-        bin_path: typing.Union[Path, str] = BIN_LZANI
+        bin_path: pathlib.Path = BIN_LZANI
     ) -> subprocess.CompletedProcess:
     """Runs lz-ani to align genomic sequences.
 
@@ -817,6 +826,7 @@ def run_rapidcluster(
         cov,
         num_alns,
         is_representatives,
+        leiden_resolution: float,
         verbose: bool = False,
         bin_path=BIN_RAPIDCLUSTER,
     ):
@@ -840,7 +850,10 @@ def run_rapidcluster(
     if num_alns > 0:
         cmd.extend(['--max', 'num_alns', f'{num_alns}'])
     if is_representatives:
-        cmd.append('--out-representatives')    
+        cmd.append('--out-representatives')
+    if algorithm == 'leiden':
+        cmd.extend(['--leiden-resolution', f'{leiden_resolution}'])
+
     cmd.extend([f'{input_path}', f'{output_path}'])
     process = subprocess.run(
         cmd,  
@@ -873,8 +886,6 @@ class CustomHelpFormatter(argparse.HelpFormatter):
             r.extend(argparse.HelpFormatter._split_lines(self, t, width))
         return r
 
-fmt = lambda prog: CustomHelpFormatter(prog)
-
 
 def main():
     parser = get_parser()
@@ -887,7 +898,7 @@ def main():
         args = validate_args_prefilter(args, parser)
         args = validate_args_fasta_input(args, parser)
 
-        out_dir = Path(args.output).parent / get_uuid()
+        out_dir = args.output_path.parent / get_uuid()
         out_dir.mkdir(parents=True, exist_ok=True)
 
         batches = []
@@ -899,7 +910,7 @@ def main():
             if args.batch_size:
                 args.bin_fastasplit = validate_binary(args.bin_fastasplit)
                 p = run_fastasplit(
-                    input_fasta=args.input, 
+                    input_fasta=args.input_path, 
                     out_dir=out_dir,
                     n=args.batch_size,
                     verbose=args.verbose,
@@ -910,7 +921,7 @@ def main():
                 batches.sort()
             # Do not split multi-fasta file.
             else:
-                batches.append([args.input])
+                batches.append([args.input_path])
 
         num_batches = len(batches)
         db_paths = []
@@ -961,7 +972,7 @@ def main():
         )
 
         out_ani = out_dir / 'all2all.txt.ani-shorter'
-        out_ani.rename(args.output)
+        out_ani.rename(args.output_path)
 
         if not args.keep_temp:
             if out_dir.exists():
@@ -972,7 +983,7 @@ def main():
         args.bin_lzani = validate_binary(args.bin_lzani)
         args = validate_args_fasta_input(args, parser)
 
-        out_dir = Path(args.output).parent / get_uuid()
+        out_dir = args.output_path.parent / get_uuid()
         out_dir.mkdir(parents=True, exist_ok=True)
         txt_path = out_dir / 'ids.txt'
 
@@ -980,7 +991,7 @@ def main():
         p = run_lzani(
             input_paths=args.fasta_paths,
             txt_path=txt_path,
-            output_path=args.output,
+            output_path=args.output_path,
             out_format=ALIGN_OUTFMT[args.outfmt],
             out_tani=args.tani,
             out_gani=args.gani,
@@ -1012,9 +1023,9 @@ def main():
 
         # Run rapid-cluster
         p = run_rapidcluster(
-            input_path=args.input,
+            input_path=args.input_path,
             ids_path=args.ids_path,
-            output_path=args.output,
+            output_path=args.output_path,
             algorithm=args.algorithm,
             metric=args.metric,
             metric_threshold=args.metric_threshold,
@@ -1024,6 +1035,7 @@ def main():
             cov=args.cov,
             num_alns=args.num_alns,
             is_representatives=args.representatives,
+            leiden_resolution=args.leiden_resolution,
             verbose=1,
             bin_path=args.bin_rapidcluster,
         )
