@@ -5,7 +5,6 @@ https://github.com/refresh-bio/vclust-dev
 """
 
 import argparse
-import csv
 import multiprocessing
 import pathlib
 import shutil
@@ -14,7 +13,7 @@ import sys
 import typing
 import uuid
 
-__version__ = '0.5'
+__version__ = '0.7'
 
 DEFAULT_THREAD_COUNT = min(multiprocessing.cpu_count(), 64)
 
@@ -151,7 +150,7 @@ def get_parser() -> argparse.ArgumentParser:
         metavar='<file>',
         type=pathlib.Path,
         dest="bin_kmerdb",
-        default=f'{BIN_KMERDB.relative_to(VCLUST_DIR)}',
+        default=f'{BIN_KMERDB}',
         help='Path to the kmer-db binary [%(default)s]'
     )
     prefilter_parser.add_argument(
@@ -159,7 +158,7 @@ def get_parser() -> argparse.ArgumentParser:
         metavar='<file>',
         type=pathlib.Path,
         dest="bin_fastasplit",
-        default=f'{BIN_FASTASPLIT.relative_to(VCLUST_DIR)}',
+        default=f'{BIN_FASTASPLIT}',
         help='Path to the multi-fasta-split binary [%(default)s]'
     )
     prefilter_parser.add_argument(
@@ -266,7 +265,7 @@ def get_parser() -> argparse.ArgumentParser:
         metavar='<file>',
         type=pathlib.Path,
         dest='bin_lzani',
-        default=f'{BIN_LZANI.relative_to(VCLUST_DIR)}',
+        default=f'{BIN_LZANI}',
         help='Path to the lz-ani binary [%(default)s]'
     )
     align_parser.add_argument(
@@ -454,7 +453,7 @@ def get_parser() -> argparse.ArgumentParser:
         metavar='<file>',
         type=pathlib.Path,
         dest="bin_rapidcluster",
-        default=f'{BIN_RAPIDCLUSTER.relative_to(VCLUST_DIR)}',
+        default=f'{BIN_RAPIDCLUSTER}',
         help='Path to the rapid-cluster binary [%(default)s]'
     )
     cluster_parser.add_argument(
@@ -472,7 +471,11 @@ def get_parser() -> argparse.ArgumentParser:
 
 
 def get_uuid() -> str:
-    """Return unique identifier"""
+    """Return a unique identifier.
+
+    Returns:
+        str: A string representing a unique identifier.
+    """
     return f'vclust-{str(uuid.uuid4().hex)[:16]}'
 
 
@@ -486,54 +489,58 @@ def validate_binary(bin_path: pathlib.Path) -> pathlib.Path:
         Path to the binary file.
 
     Raises:
-        SystemExit: If the binary file is not found.
+        SystemExit: If the binary file is not found or not executable.
 
     """
-    try:
-        subprocess.run(
-            [f'{bin_path}'],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL)
-    except FileNotFoundError:
+    if not bin_path.exists():
         exit(f'error: executable not found: {bin_path.resolve()}')
+    if not shutil.which(bin_path):
+        exit(f'error: file not executable: {bin_path.resolve()}')
     return bin_path
 
-def validate_args_fasta_input(args, parser):
+
+def validate_args_fasta_input(args, parser) -> argparse.Namespace:
+    """Validate the arguments for FASTA input."""
     args.is_multifasta = True
     args.fasta_paths = [args.input_path]
+
     if args.input_path.is_dir():
         args.is_multifasta = False
         args.fasta_paths = sorted(
             f for f in args.input_path.iterdir() if f.is_file()
         )
-    if not args.is_multifasta and (n := len(args.fasta_paths)) < 2:
-        parser.error(f'too few fasta files ({n}) in {args.input_path}')
+
+    if not args.is_multifasta and len(args.fasta_paths) < 2:
+        parser.error(f'Too few fasta files found in {args.input_path}. '
+                     f'Expected at least 2, but found {len(args.fasta_paths)}.')
+
     return args
 
 
-def validate_args_prefilter(args, parser): 
+def validate_args_prefilter(args, parser) -> argparse.Namespace:
+    """Validate the arguments for the prefilter command."""
     if args.batch_size and args.input_path.is_dir():
         parser.error('--batch-size only handles a multi-fasta file'
             ', not a directory.')
     return args
 
 
-def validate_args_cluster(args, parser):
-    # Validate the ani.tsv file.
+def validate_args_cluster(args, parser) -> argparse.Namespace:
+    """Validate the arguments for the cluster command."""
+    # Validate the similarity metric and threshold.
+    args_dict = vars(args)
+    args.metric_threshold = args_dict.get(args.metric, 0)
+    if not args.metric_threshold:
+        parser.error(f'{args.metric} threshold must be above 0. '
+            f'Specify the option: --{args.metric}')
+
+    # Check if the input TSV file has the required columns.
     with open(args.input_path) as fh:
         header = fh.readline().split()
         if 'idx1' not in header and 'idx2' not in header:
             parser.error(
                 f'missing columns `idx1` and `idx2` in {args.input_path}')
-
-        args_dict = vars(args)
-        args.metric_threshold = args_dict.get(args.metric, 0)
-        # Check if the threshold for the metric is above 0.
-        if not args.metric_threshold:
-            parser.error(f'{args.metric} threshold must be above 0. '
-                f'Specify the option: --{args.metric}')
         
-        # Verify presence of columns for options with thresholds greater than 0.
         options = ['tani', 'gani', 'ani', 'cov', 'num_alns']
         for name in options:
             value = args_dict[name]
@@ -555,7 +562,31 @@ def validate_process(func):
 
 
 @validate_process
-def run_fastasplit(input_fasta, out_dir, n, verbose, bin_path = BIN_FASTASPLIT):
+def run_fastasplit(
+        input_fasta: pathlib.Path,
+        out_dir: pathlib.Path,
+        n: int,
+        verbose: bool,
+        bin_path = BIN_FASTASPLIT
+    ) -> subprocess.CompletedProcess:
+    """Run multi-fasta-split to split a fasta file into files of `n` sequences.
+    
+    Args:
+        input_fasta (Path):
+            Path to the input FASTA file.
+        out_dir (Path):
+            Path to the output directory.
+        n (int):
+            Number of sequences per output FASTA file.
+        verbose (bool):
+            Whether to display verbose output.
+        bin_path (Path):
+            Path to the multi-fasta-split executable.
+        
+    Returns:
+        subprocess.CompletedProcess: Completed process information.
+        
+    """
     cmd = [
         f"{bin_path}", 
         "-n", f"{n}",
@@ -583,14 +614,14 @@ def run_kmerdb_build(
         verbose: bool = False,
         bin_path: pathlib.Path = BIN_KMERDB
     ) -> subprocess.CompletedProcess:
-    """Runs kmer-db build to create a database from FASTA file(s).
+    """Run kmer-db build to create a database from FASTA file(s).
 
     Args:
         input_fasta (Path):
             Path to the input FASTA file or directory with input FASTA files.
-        outfile_txt (Path or str):
+        outfile_txt (Path):
             Path to the output text file that will list the input FASTA files.
-        outfile_db (Path or str):
+        outfile_db (Path):
             Path to the output kmer-db database file.
         kmer_size (int):
             k-mer size.
@@ -598,7 +629,7 @@ def run_kmerdb_build(
             Number of threads to use in kmer-db.
         verbose (bool):
             Whether to display verbose output.
-        bin_path (Path or str):
+        bin_path (Path):
             Path to the kmer-db executable.
 
     Returns:
@@ -632,20 +663,22 @@ def run_kmerdb_build(
 
 @validate_process
 def run_kmerdb_all2all(
-        db_paths,
-        db_list_path,
+        db_paths: typing.List[pathlib.Path],
+        db_list_path: pathlib.Path,
         outfile_all2all: pathlib.Path,
         kmer_count: int,
         num_threads: int,
-        verbose: bool = False,
+        verbose: bool,
         bin_path: pathlib.Path = BIN_KMERDB
     ) -> subprocess.CompletedProcess:
-    """Runs kmer-db all2all to find shared k-mers between genomic sequences.
+    """Run kmer-db all2all to find shared k-mers between genomic sequences.
 
     Args:
-        infile_db (Path or str):
-            Path to the input kmer-db database file.
-        outfile_all2all (Path or str):
+        db_paths (list[Path]):
+            List of paths to the input kmer-db database files.
+        db_list_path (Path):
+            Path to the output text file listing the kmer-db database files.
+        outfile_all2all (Path):
             Path to the output all2all file.
         kmer_count (int):
             Minimum number of shared k-mers to report in all2all output.
@@ -653,9 +686,9 @@ def run_kmerdb_all2all(
             Number of threads to use in kmer-db.
         verbose (bool):
             Whether to display verbose output.
-        bin_path (Path or str):
+        bin_path (Path):
             Path to the kmer-db executable.
-
+        
     Returns:
         subprocess.CompletedProcess: Completed process information.
 
@@ -690,20 +723,18 @@ def run_kmerdb_distance(
         verbose: bool = False,
         bin_path: pathlib.Path = BIN_KMERDB
     ) -> subprocess.CompletedProcess:
-    """Runs kmer-db all2all to find shared k-mers between genomic sequences.
+    """Run kmer-db distance to estimate ANI between genomic sequences.
 
     Args:
-        infile_db (Path or str):
-            Path to the input kmer-db database file.
-        outfile_all2all (Path or str):
-            Path to the output all2all file.
-        kmer_count (int):
-            Minimum number of shared k-mers to report in all2all output.
+        infile_all2all (Path):
+            Path to the input all2all file.
+        min_value (float):
+            Minimum value to filter all2all output.
         num_threads (int):
             Number of threads to use in kmer-db.
         verbose (bool):
             Whether to display verbose output.
-        bin_path (Path or str):
+        bin_path (Path):
             Path to the kmer-db executable.
 
     Returns:
@@ -730,35 +761,74 @@ def run_kmerdb_distance(
 
 @validate_process
 def run_lzani(
-        input_paths,
-        txt_path,
-        output_path,
-        out_format,
-        out_tani,
-        out_gani,
-        out_ani,
-        out_cov,
-        filter_file,
-        filter_threshold,
-        mal,
-        msl,
-        mrd,
-        mqd,
-        reg,
-        aw,
-        am,
-        ar,
+        input_paths: typing.List[pathlib.Path],
+        txt_path: pathlib.Path,
+        output_path: pathlib.Path,
+        out_format: typing.List[str],
+        out_tani: float,
+        out_gani: float,
+        out_ani: float,
+        out_cov: float,
+        filter_file: pathlib.Path,
+        filter_threshold: float,
+        mal: int,
+        msl: int,
+        mrd: int,
+        mqd: int,
+        reg: int,
+        aw: int,
+        am: int,
+        ar: int,
         num_threads: int,
-        verbose: bool = False,
+        verbose: bool,
         bin_path: pathlib.Path = BIN_LZANI
     ) -> subprocess.CompletedProcess:
-    """Runs lz-ani to align genomic sequences.
+    """Run lz-ani to align genomic sequences.
 
     Args:
-        input_fasta (Path):
-            Path to the input FASTA file or directory with input FASTA files.
-        infile_txt (Path or str):
-            Path to the input text file listing FASTA files.
+        input_paths (List[Path]):
+            List of paths to the input FASTA files.
+        txt_path (Path):
+            Path to the output text file listing the input FASTA files.
+        output_path (Path):
+            Path to the output ANI file.
+        out_format (List[str]):
+            List of LZ-ANI column names.
+        out_tani (float):
+            Minimum tANI to output.
+        out_gani (float):
+            Minimum gANI to output.
+        out_ani (float):
+            Minimum ANI to output.
+        out_cov (float):
+            Minimum coverage to output.
+        filter_file (Path):
+            Path to the filter file (prefilter's output).
+        filter_threshold (float):
+            Filter threshold.
+        mal (int):
+            Minimum anchor length.
+        msl (int):
+            Minimum seed length.
+        mrd (int):
+            Maximum distance between approximate matches in reference.
+        mqd (int):
+            Maximum distance between approximate matches in query.
+        reg (int):
+            Minimum considered region length.
+        aw (int):
+            Approximate window length.
+        am (int):
+            Maximum number of mismatches in approximate window.
+        ar (int):
+            Minimum length of run ending approximate extension.
+        num_threads (int):
+            Number of threads to use in lz-ani.
+        verbose (bool):
+            Whether to display verbose output.
+        bin_path (Path):
+            Path to the lz-ani executable.
+
     Returns:
         subprocess.CompletedProcess: Completed process information.
 
@@ -814,22 +884,59 @@ def run_lzani(
 
 @validate_process
 def run_rapidcluster(
-        input_path,
-        ids_path,
-        output_path,
-        algorithm,
-        metric,
-        metric_threshold,
-        tani,
-        gani,
-        ani,
-        cov,
-        num_alns,
-        is_representatives,
+        input_path: pathlib.Path,
+        ids_path: pathlib.Path,
+        output_path: pathlib.Path,
+        algorithm: str,
+        metric: str,
+        tani: float,
+        gani: float,
+        ani: float,
+        cov: float,
+        num_alns: int,
+        is_representatives: bool,
         leiden_resolution: float,
-        verbose: bool = False,
+        verbose,
         bin_path=BIN_RAPIDCLUSTER,
-    ):
+    ) -> subprocess.CompletedProcess:
+    """Runs rapid-cluster to cluster genomic sequences.
+
+    Args:
+        input_path (Path):
+            Path to the input ANI file.
+        ids_path (Path):
+            Path to the input file with sequence identifiers.
+        output_path (Path):
+            Path to the output file.
+        algorithm (str):
+            Clustering algorithm.
+        metric (str):
+            Similarity metric for clustering.
+        metric_threshold (float):
+            Similarity threshold.
+        tani (float):
+            Minimum tANI.
+        gani (float):
+            Minimum gANI.
+        ani (float):
+            Minimum ANI.
+        cov (float):
+            Minimum coverage.
+        num_alns (int):
+            Maximum number of local alignments between two genomes.
+        is_representatives (bool):
+            Whether to output a representative genome for each cluster.
+        leiden_resolution (float):
+            Resolution parameter for the Leiden algorithm.
+        verbose (bool):
+            Whether to display verbose output.
+        bin_path (Path):
+            Path to the rapid-cluster executable.
+
+    Returns:
+        subprocess.CompletedProcess: Completed process information.
+    
+    """
     cmd = [
         f'{bin_path}',
         '--objects-file',
@@ -864,7 +971,6 @@ def run_rapidcluster(
     return process
 
 
-
 class CustomHelpFormatter(argparse.HelpFormatter):
     """Custom help message formatter for argparse."""
 
@@ -893,7 +999,6 @@ def main():
 
     # Prefilter
     if args.command == 'prefilter':
-        
         args.bin_kmerdb = validate_binary(args.bin_kmerdb)
         args = validate_args_prefilter(args, parser)
         args = validate_args_fasta_input(args, parser)
@@ -962,7 +1067,6 @@ def main():
             bin_path=args.bin_kmerdb,
         )
 
-        # Run kmer-db distance.
         p = run_kmerdb_distance(
             infile_all2all=all2all_path,
             min_value=args.min_ident,
@@ -1017,7 +1121,6 @@ def main():
 
     # Cluster
     elif args.command == 'cluster':
-
         args.bin_rapidcluster = validate_binary(args.bin_rapidcluster)
         args = validate_args_cluster(args, parser)
 
@@ -1028,7 +1131,6 @@ def main():
             output_path=args.output_path,
             algorithm=args.algorithm,
             metric=args.metric,
-            metric_threshold=args.metric_threshold,
             tani=args.tani,
             gani=args.gani,
             ani=args.ani,
