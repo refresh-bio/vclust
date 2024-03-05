@@ -876,7 +876,7 @@ def run_lzani(
     process = subprocess.run(
         cmd,  
         stdout=None if verbose else subprocess.DEVNULL, 
-        stderr=None if verbose else subprocess.PIPE,
+        stderr=subprocess.PIPE,
         text=True,
     )
     return process
@@ -965,7 +965,7 @@ def run_rapidcluster(
     process = subprocess.run(
         cmd,  
         stdout=None if verbose else subprocess.DEVNULL, 
-        stderr=None if verbose else subprocess.PIPE,
+        stderr=subprocess.PIPE,
         text=True,
     )
     return process
