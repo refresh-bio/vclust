@@ -286,42 +286,42 @@ def get_parser() -> argparse.ArgumentParser:
         '--mrd',
         metavar='<int>',
         type=int,
-        default=128,
+        default=40,
         help='Max. dist. between approx. matches in reference [%(default)s]'
     )
     align_parser.add_argument(
         '--mqd',
         metavar='<int>',
         type=int,
-        default=32,
+        default=40,
         help='Max. dist. between approx. matches in query [%(default)s]'
     )
     align_parser.add_argument(
         '--reg',
         metavar='<int>',
         type=int,
-        default=80,
+        default=35,
         help='Min. considered region length [%(default)s]'
     )
     align_parser.add_argument(
         '--aw',
         metavar='<int>',
         type=int,
-        default=16,
+        default=15,
         help='Approx. window length [%(default)s]'
     )
     align_parser.add_argument(
         '--am',
         metavar='<int>',
         type=int,
-        default=6,
+        default=7,
         help='Max. no. of mismatches in approx. window [%(default)s]'
     )
     align_parser.add_argument(
         '--ar',
         metavar='<int>',
         type=int,
-        default=2,
+        default=3,
         help='Min. length of run ending approx. extension [%(default)s]'
     )
     align_parser.add_argument(
@@ -455,6 +455,11 @@ def get_parser() -> argparse.ArgumentParser:
         dest="bin_rapidcluster",
         default=f'{BIN_RAPIDCLUSTER}',
         help='Path to the rapid-cluster binary [%(default)s]'
+    )
+    cluster_parser.add_argument(
+        '-v', '--verbose',
+        action="store_true",
+        help="Show kmer-db output"
     )
     cluster_parser.add_argument(
         '-h', '--help',
@@ -873,6 +878,9 @@ def run_lzani(
         if value > 0:
             cmd.extend(['--out-filter', f'{name}', f'{value}'])
 
+    if verbose: 
+        cmd.extend(['--verbose', '2'])
+
     process = subprocess.run(
         cmd,  
         stdout=None if verbose else subprocess.DEVNULL, 
@@ -896,7 +904,7 @@ def run_rapidcluster(
         num_alns: int,
         is_representatives: bool,
         leiden_resolution: float,
-        verbose,
+        verbose: bool,
         bin_path=BIN_RAPIDCLUSTER,
     ) -> subprocess.CompletedProcess:
     """Runs rapid-cluster to cluster genomic sequences.
@@ -1138,7 +1146,7 @@ def main():
             num_alns=args.num_alns,
             is_representatives=args.representatives,
             leiden_resolution=args.leiden_resolution,
-            verbose=1,
+            verbose=args.verbose,
             bin_path=args.bin_rapidcluster,
         )
 
