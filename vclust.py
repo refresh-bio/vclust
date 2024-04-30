@@ -23,7 +23,7 @@ VCLUST_DIR = pathlib.Path(__file__).resolve().parent
 BIN_DIR = VCLUST_DIR / 'bin'
 BIN_KMERDB = BIN_DIR / 'kmer-db'
 BIN_LZANI = BIN_DIR / 'lz-ani'
-BIN_RAPIDCLUSTER = BIN_DIR / 'rapid-cluster'
+BIN_RAPIDCLUSTER = BIN_DIR / 'clusty'
 BIN_FASTASPLIT = BIN_DIR / 'multi-fasta-split'
 
 # lz-ani output columns
