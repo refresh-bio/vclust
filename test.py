@@ -150,7 +150,29 @@ def test_align_default(test_dir, input, params):
     assert p.stderr == None
     assert out_file.exists()
     assert out_file.stat().st_size
-
+    ref_pairs = {
+        ('NC_010807.ref', 'NC_010807.alt1'): 0.99753,
+        ('NC_010807.ref', 'NC_010807.alt2'): 0.98985,
+        ('NC_010807.ref', 'NC_010807.alt3'): 0.98414,
+        ('NC_005091.ref', 'NC_005091.alt1'): 0.97161,
+        ('NC_005091.ref', 'NC_005091.alt2'): 0.96707,
+        ('NC_025457.ref', 'NC_025457.alt1'): 0.80607,
+        ('NC_025457.ref', 'NC_025457.alt2'): 0.75921,
+        ('NC_002486.ref', 'NC_002486.alt'): 1.00000,
+    }
+    pairs = {}
+    with open(out_file) as fh:
+        next(fh)
+        for line in fh:
+            cols = line.split()
+            id1 = cols[2][:-4] if '.fna' in cols[2] else cols[2]
+            id2 = cols[3][:-4] if '.fna' in cols[3] else cols[3]
+            tani = float(cols[4])
+            pairs[(id1, id2)] = tani
+    for ref_pair, ref_tani in ref_pairs.items():
+        tani = pairs[ref_pair]
+        assert abs(tani - ref_tani) < 0.03
+    
 
 @pytest.mark.parametrize('outfmt,ref_cols',[
     ('standard', vclust.ALIGN_OUTFMT['standard']),
@@ -215,8 +237,14 @@ def test_workflow_prefilter_align(test_dir, input, params):
     assert ani_file.stat().st_size
 
 
-
-def test_cluster_default(test_dir):
+@pytest.mark.parametrize('algorithm',[
+    'single',
+    'complete',
+    'uclust',
+    'cd-hit',
+    'set-cover',
+])
+def test_cluster_algorithm(test_dir, algorithm):
     out_file = test_dir / 'clusters.tsv'
     cmd = [
         f'{VCLUST.resolve()}',
@@ -228,7 +256,34 @@ def test_cluster_default(test_dir):
         '-o',
         f'{out_file}',
         '--algorithm',
-        'single',
+        f'{algorithm}',
+        '--metric',
+        'tani',
+        '--tani',
+        '0.95',
+    ]
+    p = subprocess.run(cmd, 
+        stdout=subprocess.DEVNULL, 
+        stderr=subprocess.DEVNULL)
+    assert p.returncode == 0
+    assert p.stderr == None
+    assert out_file.exists()
+    assert out_file.stat().st_size
+
+
+def test_cluster_algorithm_leiden(test_dir):
+    out_file = test_dir / 'clusters.tsv'
+    cmd = [
+        f'{VCLUST.resolve()}',
+        'cluster',
+        '-i',
+        f'{ANI_FILE}',
+        '--ids',
+        f'{IDS_FILE}',
+        '-o',
+        f'{out_file}',
+        '--algorithm',
+        'leiden',
         '--metric',
         'tani',
         '--tani',

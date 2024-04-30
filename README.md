@@ -21,7 +21,7 @@ vclust offers multiple similarity measures between two genome sequences, whereas
 
 #### 3. Multiple clustering algorithms
 
-vclust offers support for seven clustering algorithms tailored to various scenarios, including taxonomic classification and dereplication of viral genomes.
+vclust offers support for six clustering algorithms tailored to various scenarios, including taxonomic classification and dereplication of viral genomes.
 - Single-linkage
 - Complete-linkage
 - UCLUST
@@ -84,7 +84,7 @@ vclust comprises three commands: `prefilter`, `align`, and `cluster`. Calls to t
 
 > For small datasets, using prefilter is optional. However, note that without it, vclust will perform all-versus-all pairwise sequence alignments.
 
-The `prefilter` command creates a pre-alignment filter, which eliminates dissimilar genome pairs before calculating pairwise alignments. This process reduces the number of potential genome pairs to only those with sufficient *k*-mer-based sequence similarity. The *k*-mer-based sequence similarity between two genomes is controlled by two options: minimum number of common *k*-mers (`--min-kmers`) and minimum sequence identity of the shorter sequence (`--min-ident`). Both *k*-mer-based similarities are computed using [Kmer-db](https://github.com/refresh-bio/kmer-db) which evaluates the entire set of *k*-mers, sovercoming the sampling constraints typical of sketching methods like fastANI and Mash. In addittion, the use of sparse distance matrices enables memory-efficient processing of millions of genomes.
+The `prefilter` command creates a pre-alignment filter, which eliminates dissimilar genome pairs before calculating pairwise alignments. This process reduces the number of potential genome pairs to only those with sufficient *k*-mer-based sequence similarity. The *k*-mer-based sequence similarity between two genomes is controlled by two options: minimum number of common *k*-mers (`--min-kmers`) and minimum sequence identity of the shorter sequence (`--min-ident`). Both *k*-mer-based similarities are computed using [Kmer-db](https://github.com/refresh-bio/kmer-db) which evaluates the entire set of *k*-mers, overcoming the sampling constraints typical of sketching methods like fastANI and Mash. In addittion, the use of sparse distance matrices enables memory-efficient processing of millions of genomes.
 
 ```bash
 # Prefilter creates a pre-alignment filter with genome sequence pairs that have
@@ -165,7 +165,7 @@ The `align` command enables filtering output by setting minimum thresholds for s
 
 The `cluster` command takes as input two TSV files (outputs of vclust align) and clusters viral genomes using a user-selected clustering algorithm and similarity measures. Internally, vclust uses [rapid-cluster](https://github.com/refresh-bio/rapid-cluster), enabling large-scale clustering of millions of genome sequences by leveraging sparse distance matrices.
 
-vclustr supports seven clustering algorithms (`--algorithm`):
+vclustr supports six clustering algorithms (`--algorithm`):
 
 1. `single`: Single-linkage clustering
 2. `complete`: Complete-linkage clustering
@@ -293,7 +293,7 @@ NC_010807.ref	NC_010807.alt2
 ```bash
 # Cluster contigs into vOTUs using the Leiden algorithm.
 ./vclust cluster -i ani.tsv -o clusters.tsv --ids ani.ids.tsv --algorithm leiden \
---algorithm-param 0.7 --metric ani --ani 0.95 --cov 0.85
+--leiden-resolution 0.7 --metric ani --ani 0.95 --cov 0.85
 ```
 
 ### Calculate pairwise similarities between all-versus-all genomes
