@@ -23,7 +23,7 @@ VCLUST_DIR = pathlib.Path(__file__).resolve().parent
 BIN_DIR = VCLUST_DIR / 'bin'
 BIN_KMERDB = BIN_DIR / 'kmer-db'
 BIN_LZANI = BIN_DIR / 'lz-ani'
-BIN_RAPIDCLUSTER = BIN_DIR / 'clusty'
+BIN_CLUSTY = BIN_DIR / 'clusty'
 BIN_FASTASPLIT = BIN_DIR / 'multi-fasta-split'
 
 # lz-ani output columns
@@ -452,9 +452,9 @@ def get_parser() -> argparse.ArgumentParser:
         '--bin',
         metavar='<file>',
         type=pathlib.Path,
-        dest="bin_rapidcluster",
-        default=f'{BIN_RAPIDCLUSTER}',
-        help='Path to the rapid-cluster binary [%(default)s]'
+        dest="BIN_CLUSTY",
+        default=f'{BIN_CLUSTY}',
+        help='Path to the clusty binary [%(default)s]'
     )
     cluster_parser.add_argument(
         '-v', '--verbose',
@@ -891,7 +891,7 @@ def run_lzani(
 
 
 @validate_process
-def run_rapidcluster(
+def run_clusty(
         input_path: pathlib.Path,
         ids_path: pathlib.Path,
         output_path: pathlib.Path,
@@ -905,9 +905,9 @@ def run_rapidcluster(
         is_representatives: bool,
         leiden_resolution: float,
         verbose: bool,
-        bin_path=BIN_RAPIDCLUSTER,
+        bin_path=BIN_CLUSTY,
     ) -> subprocess.CompletedProcess:
-    """Runs rapid-cluster to cluster genomic sequences.
+    """Runs clusty to cluster genomic sequences.
 
     Args:
         input_path (Path):
@@ -939,7 +939,7 @@ def run_rapidcluster(
         verbose (bool):
             Whether to display verbose output.
         bin_path (Path):
-            Path to the rapid-cluster executable.
+            Path to the clusty executable.
 
     Returns:
         subprocess.CompletedProcess: Completed process information.
@@ -1129,11 +1129,11 @@ def main():
 
     # Cluster
     elif args.command == 'cluster':
-        args.bin_rapidcluster = validate_binary(args.bin_rapidcluster)
+        args.BIN_CLUSTY = validate_binary(args.BIN_CLUSTY)
         args = validate_args_cluster(args, parser)
 
-        # Run rapid-cluster
-        p = run_rapidcluster(
+        # Run clusty
+        p = run_clusty(
             input_path=args.input_path,
             ids_path=args.ids_path,
             output_path=args.output_path,
@@ -1147,7 +1147,7 @@ def main():
             is_representatives=args.representatives,
             leiden_resolution=args.leiden_resolution,
             verbose=args.verbose,
-            bin_path=args.bin_rapidcluster,
+            bin_path=args.BIN_CLUSTY,
         )
 
 
