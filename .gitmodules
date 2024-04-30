@@ -1,7 +1,7 @@
 [submodule "3rd_party/kmer-db"]
 	path = 3rd_party/kmer-db
 	url = https://github.com/refresh-bio/kmer-db-dev.git
-	branch = feature/v2
+	branch = feature/file-wrapper
 [submodule "3rd_party/lz-ani"]
 	path = 3rd_party/lz-ani
 	url = https://github.com/refresh-bio/LZ-ANI.git
