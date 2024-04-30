@@ -2,9 +2,6 @@
 	path = 3rd_party/kmer-db
 	url = https://github.com/refresh-bio/kmer-db-dev.git
 	branch = feature/v2
-[submodule "3rd_party/rapid-cluster"]
-	path = 3rd_party/rapid-cluster
-	url = https://github.com/refresh-bio/rapid-cluster.git
 [submodule "3rd_party/lz-ani"]
 	path = 3rd_party/lz-ani
 	url = https://github.com/refresh-bio/LZ-ANI.git
@@ -14,3 +11,6 @@
 [submodule "3rd_party/ref-utils"]
 	path = 3rd_party/ref-utils
 	url = https://github.com/refresh-bio/ref-utils-dev.git
+[submodule "3rd_party/clusty-dev"]
+	path = 3rd_party/clusty-dev
+	url = https://github.com/refresh-bio/clusty-dev
