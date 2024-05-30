@@ -13,7 +13,7 @@ import sys
 import typing
 import uuid
 
-__version__ = '0.7'
+__version__ = '1.0'
 
 DEFAULT_THREAD_COUNT = min(multiprocessing.cpu_count(), 64)
 
@@ -82,8 +82,12 @@ def get_parser() -> argparse.ArgumentParser:
         formatter_class=fmt,
         add_help=False,
     )
-    prefilter_parser._optionals.title = "Options"
-    prefilter_parser.add_argument(
+
+    prefilter_optional = prefilter_parser._action_groups.pop()
+    prefilter_required = prefilter_parser.add_argument_group('required arguments')
+    prefilter_parser._action_groups.append(prefilter_optional)
+
+    prefilter_required.add_argument(
         '-i', '--in',
         metavar='<file>',
         type=input_path_type,
@@ -91,7 +95,7 @@ def get_parser() -> argparse.ArgumentParser:
         help='Input FASTA file or directory with FASTA files',
         required=True
     )
-    prefilter_parser.add_argument(
+    prefilter_required.add_argument(
         '-o', '--out',
         metavar='<file>',
         type=pathlib.Path,
@@ -103,23 +107,15 @@ def get_parser() -> argparse.ArgumentParser:
         '-k', '--k',
         metavar="<int>",
         type=int,
-        default=18,
+        default=25,
         choices=range(15, 31),
-        help="Size of k-mer for kmer-db [%(default)s]"
-    )
-    prefilter_parser.add_argument(
-        '-t', '--threads',
-        metavar="<int>",
-        dest="num_threads",
-        type=int,
-        default=DEFAULT_THREAD_COUNT,
-        help='Number of threads (all by default) [%(default)s]'
+        help="Size of k-mer for Kmer-db [%(default)s]"
     )
     prefilter_parser.add_argument(
         '--min-kmers',
         metavar="<int>",
         type=int,
-        default=2,
+        default=10,
         help='Filter genome pairs based on minimum number of shared k-mers '
              '[%(default)s]'
     )
@@ -127,7 +123,7 @@ def get_parser() -> argparse.ArgumentParser:
         '--min-ident',
         metavar="<float>",
         type=ranged_float_type,
-        default=0.1,
+        default=0.7,
         help='Filter genome pairs based on minimum sequence identity of '
         'the shorter sequence (0-1) [%(default)s]'
     )
@@ -143,7 +139,7 @@ def get_parser() -> argparse.ArgumentParser:
     prefilter_parser.add_argument(
         '--keep_temp',
         action="store_true",
-        help='Keep temporary kmer-db files [%(default)s]'
+        help='Keep temporary Kmer-db files [%(default)s]'
     )
     prefilter_parser.add_argument(
         '--bin',
@@ -151,7 +147,7 @@ def get_parser() -> argparse.ArgumentParser:
         type=pathlib.Path,
         dest="bin_kmerdb",
         default=f'{BIN_KMERDB}',
-        help='Path to the kmer-db binary [%(default)s]'
+        help='Path to the Kmer-db binary [%(default)s]'
     )
     prefilter_parser.add_argument(
         '--bin-fasta',
@@ -162,9 +158,17 @@ def get_parser() -> argparse.ArgumentParser:
         help='Path to the multi-fasta-split binary [%(default)s]'
     )
     prefilter_parser.add_argument(
+        '-t', '--threads',
+        metavar="<int>",
+        dest="num_threads",
+        type=int,
+        default=DEFAULT_THREAD_COUNT,
+        help='Number of threads (all by default) [%(default)s]'
+    )
+    prefilter_parser.add_argument(
         '-v', '--verbose',
         action="store_true",
-        help="Show kmer-db output"
+        help="Show Kmer-db progress"
     )
     prefilter_parser.add_argument(
         '-h', '--help',
@@ -179,8 +183,10 @@ def get_parser() -> argparse.ArgumentParser:
         formatter_class=fmt,
         add_help=False,
     )
-    align_parser._optionals.title = "Options"
-    align_parser.add_argument(
+    align_optional = align_parser._action_groups.pop()
+    align_required = align_parser.add_argument_group('required arguments')
+    align_parser._action_groups.append(align_optional)
+    align_required.add_argument(
         '-i', '--in',
         metavar='<file>',
         type=input_path_type,
@@ -188,13 +194,28 @@ def get_parser() -> argparse.ArgumentParser:
         help='Input FASTA file or directory with FASTA files',
         required=True
     )
-    align_parser.add_argument(
+    align_required.add_argument(
         '-o', '--out',
         metavar='<file>',
         type=pathlib.Path,
         dest='output_path',
         help='Output filename',
         required=True
+    )
+    align_parser.add_argument(
+        '--filter',
+        metavar='<file>',
+        type=input_path_type,
+        dest="filter_path",
+        help='Path to filter file (output of prefilter)'
+    )
+    align_parser.add_argument(
+        '--filter-threshold',
+        metavar='<float>',
+        dest='filter_threshold',
+        type=ranged_float_type,
+        default=0,
+        help='Align genome pairs above the threshold (0-1) [%(default)s]'
     )
     align_parser.add_argument(
         '--outfmt',
@@ -235,30 +256,7 @@ def get_parser() -> argparse.ArgumentParser:
         metavar='<float>',
         type=ranged_float_type,
         default=0,
-        help='Min. coverage to output (0-1) [%(default)s]'
-    )
-    align_parser.add_argument(
-        '--filter',
-        metavar='<file>',
-        type=input_path_type,
-        dest="filter_path",
-        help='Path to filter file (output of prefilter)'
-    )
-    align_parser.add_argument(
-        '--filter-threshold',
-        metavar='<float>',
-        dest='filter_threshold',
-        type=ranged_float_type,
-        default=0,
-        help='Align genome pairs above the threshold (0-1) [%(default)s]'
-    )
-    align_parser.add_argument(
-        '-t', '--threads',
-        metavar='<int>',
-        dest='num_threads',
-        type=int,
-        default=DEFAULT_THREAD_COUNT,
-        help='Number of threads (all by default) [%(default)s]'
+        help='Min. coverage (aligned fraction) to output (0-1) [%(default)s]'
     )
     align_parser.add_argument(
         '--bin',
@@ -325,9 +323,17 @@ def get_parser() -> argparse.ArgumentParser:
         help='Min. length of run ending approx. extension [%(default)s]'
     )
     align_parser.add_argument(
+        '-t', '--threads',
+        metavar='<int>',
+        dest='num_threads',
+        type=int,
+        default=DEFAULT_THREAD_COUNT,
+        help='Number of threads (all by default) [%(default)s]'
+    )
+    align_parser.add_argument(
         '-v', '--verbose',
         action="store_true",
-        help="Show lz-ani standard output"
+        help="Show LZ-ANI progress"
     )
     align_parser.add_argument(
         '-h', '--help',
@@ -342,8 +348,11 @@ def get_parser() -> argparse.ArgumentParser:
         formatter_class=fmt,
         add_help=False,
     )
-    cluster_parser._optionals.title = "Options"
-    cluster_parser.add_argument(
+    cluster_optional = cluster_parser._action_groups.pop()
+    cluster_required = cluster_parser.add_argument_group('required arguments')
+    cluster_parser._action_groups.append(cluster_optional)
+
+    cluster_required.add_argument(
         '-i', '--in',
         metavar='<file>',
         type=input_path_type,
@@ -351,7 +360,7 @@ def get_parser() -> argparse.ArgumentParser:
         help='Input file with ANI metrics (tsv)',
         required=True
     )
-    cluster_parser.add_argument(
+    cluster_required.add_argument(
         '-o', '--out',
         metavar='<file>',
         type=pathlib.Path,
@@ -359,7 +368,7 @@ def get_parser() -> argparse.ArgumentParser:
         help='Output filename',
         required=True
     )
-    cluster_parser.add_argument(
+    cluster_required.add_argument(
         '--ids',
         metavar='<file>',
         type=input_path_type,
@@ -430,7 +439,7 @@ def get_parser() -> argparse.ArgumentParser:
         dest='cov',
         type=ranged_float_type,
         default=0,
-        help='Min. coverage (0-1) [%(default)s]\n'
+        help='Min. coverage/aligned fraction (0-1) [%(default)s]\n'
     )
     cluster_parser.add_argument(
         '--num_alns',
@@ -454,12 +463,12 @@ def get_parser() -> argparse.ArgumentParser:
         type=pathlib.Path,
         dest="BIN_CLUSTY",
         default=f'{BIN_CLUSTY}',
-        help='Path to the clusty binary [%(default)s]'
+        help='Path to the Clusty binary [%(default)s]'
     )
     cluster_parser.add_argument(
         '-v', '--verbose',
         action="store_true",
-        help="Show kmer-db output"
+        help="Show Clusty progress"
     )
     cluster_parser.add_argument(
         '-h', '--help',
@@ -601,8 +610,8 @@ def run_fastasplit(
     ]
     process = subprocess.run(
         cmd,  
-        stdout=None if verbose else subprocess.DEVNULL, 
-        stderr=subprocess.PIPE,
+        stdout=subprocess.DEVNULL, 
+        stderr=None if verbose else subprocess.PIPE,
         text=True,
     )
     return process    
@@ -659,8 +668,8 @@ def run_kmerdb_build(
         cmd.insert(2, '-multisample-fasta')
     process = subprocess.run(
         cmd,  
-        stdout=None if verbose else subprocess.DEVNULL, 
-        stderr=subprocess.PIPE,
+        stdout=subprocess.DEVNULL, 
+        stderr=None if verbose else subprocess.PIPE,
         text=True,
     )
     return process
@@ -713,8 +722,8 @@ def run_kmerdb_all2all(
     ]
     process = subprocess.run(
         cmd,  
-        stdout=None if verbose else subprocess.DEVNULL, 
-        stderr=subprocess.PIPE,
+        stdout=subprocess.DEVNULL, 
+        stderr=None if verbose else subprocess.PIPE,
         text=True,
     )
     return process
@@ -757,8 +766,8 @@ def run_kmerdb_distance(
     ]
     process = subprocess.run(
         cmd,  
-        stdout=None if verbose else subprocess.DEVNULL, 
-        stderr=subprocess.PIPE,
+        stdout=subprocess.DEVNULL, 
+        stderr=None if verbose else subprocess.PIPE,
         text=True,
     )
     return process
@@ -806,7 +815,7 @@ def run_lzani(
         out_ani (float):
             Minimum ANI to output.
         out_cov (float):
-            Minimum coverage to output.
+            Minimum coverage (aligned fraction) to output.
         filter_file (Path):
             Path to the filter file (prefilter's output).
         filter_threshold (float):
@@ -883,8 +892,8 @@ def run_lzani(
 
     process = subprocess.run(
         cmd,  
-        stdout=None if verbose else subprocess.DEVNULL, 
-        stderr=subprocess.PIPE,
+        stdout=subprocess.DEVNULL, 
+        stderr=None if verbose else subprocess.PIPE,
         text=True,
     )
     return process
@@ -929,7 +938,7 @@ def run_clusty(
         ani (float):
             Minimum ANI.
         cov (float):
-            Minimum coverage.
+            Minimum coverage (aligned fraction).
         num_alns (int):
             Maximum number of local alignments between two genomes.
         is_representatives (bool):
@@ -972,8 +981,8 @@ def run_clusty(
     cmd.extend([f'{input_path}', f'{output_path}'])
     process = subprocess.run(
         cmd,  
-        stdout=None if verbose else subprocess.DEVNULL, 
-        stderr=subprocess.PIPE,
+        stdout=subprocess.DEVNULL, 
+        stderr=None if verbose else subprocess.PIPE,
         text=True,
     )
     return process

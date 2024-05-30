@@ -1,4 +1,4 @@
-This dataset comprises bacteriophage genome sequences with simulated mutations relative to the reference sequence (.ref). Mutations encompass substitutions (sn), deletions (del), insertions (ins), duplications (dup), inversions (inv), and translocations (tl). These modified sequences (.alt*) have known true total ANI (tANI) values compared to the reference.
+This dataset comprises bacteriophage genome sequences with simulated mutations relative to the reference sequence (.ref). Mutations include substitutions (sn), deletions (del), insertions (ins), duplications (dup), inversions (inv), and translocations (tl). These modified sequences (.alt*) have known true total ANI (tANI) values compared to the reference.
 
 ref_id	alt_id	ref_len	alt_len	tani	alt_summary
 NC_010807.ref	NC_010807.alt1	38815	38815	0.99753	sn;inv;tl
