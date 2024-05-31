@@ -11,6 +11,6 @@
 [submodule "3rd_party/ref-utils"]
 	path = 3rd_party/ref-utils
 	url = https://github.com/refresh-bio/ref-utils-dev.git
-[submodule "3rd_party/clusty-dev"]
-	path = 3rd_party/clusty-dev
-	url = https://github.com/refresh-bio/clusty-dev
+[submodule "3rd_party/clusty"]
+	path = 3rd_party/clusty
+	url = https://github.com/refresh-bio/clusty-dev.git
