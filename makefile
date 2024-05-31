@@ -29,6 +29,6 @@ prep:
 clean:
 	cd 3rd_party/kmer-db && $(MAKE) clean
 	cd 3rd_party/lz-ani && $(MAKE) clean
-	cd 3rd_party/rapid-cluster && $(MAKE) clean
+	cd 3rd_party/clusty && $(MAKE) clean
 	cd 3rd_party/ref-utils && $(MAKE) clean
 	rm bin/*
