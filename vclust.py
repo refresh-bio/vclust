@@ -5,6 +5,7 @@ https://github.com/refresh-bio/vclust-dev
 """
 
 import argparse
+import logging
 import multiprocessing
 import pathlib
 import shutil
@@ -13,7 +14,7 @@ import sys
 import typing
 import uuid
 
-__version__ = '0.7'
+__version__ = '1.0'
 
 DEFAULT_THREAD_COUNT = min(multiprocessing.cpu_count(), 64)
 
@@ -37,6 +38,7 @@ ALIGN_OUTFMT = {
     'standard': ALIGN_FIELDS[:10],
     'complete': ALIGN_FIELDS[:],
 }
+
 
 def get_parser() -> argparse.ArgumentParser:
     """Return an argument parser."""
@@ -82,8 +84,12 @@ def get_parser() -> argparse.ArgumentParser:
         formatter_class=fmt,
         add_help=False,
     )
-    prefilter_parser._optionals.title = "Options"
-    prefilter_parser.add_argument(
+
+    prefilter_optional = prefilter_parser._action_groups.pop()
+    prefilter_required = prefilter_parser.add_argument_group('required arguments')
+    prefilter_parser._action_groups.append(prefilter_optional)
+
+    prefilter_required.add_argument(
         '-i', '--in',
         metavar='<file>',
         type=input_path_type,
@@ -91,7 +97,7 @@ def get_parser() -> argparse.ArgumentParser:
         help='Input FASTA file or directory with FASTA files',
         required=True
     )
-    prefilter_parser.add_argument(
+    prefilter_required.add_argument(
         '-o', '--out',
         metavar='<file>',
         type=pathlib.Path,
@@ -103,23 +109,15 @@ def get_parser() -> argparse.ArgumentParser:
         '-k', '--k',
         metavar="<int>",
         type=int,
-        default=18,
+        default=25,
         choices=range(15, 31),
-        help="Size of k-mer for kmer-db [%(default)s]"
-    )
-    prefilter_parser.add_argument(
-        '-t', '--threads',
-        metavar="<int>",
-        dest="num_threads",
-        type=int,
-        default=DEFAULT_THREAD_COUNT,
-        help='Number of threads (all by default) [%(default)s]'
+        help="Size of k-mer for Kmer-db [%(default)s]"
     )
     prefilter_parser.add_argument(
         '--min-kmers',
         metavar="<int>",
         type=int,
-        default=2,
+        default=10,
         help='Filter genome pairs based on minimum number of shared k-mers '
              '[%(default)s]'
     )
@@ -127,7 +125,7 @@ def get_parser() -> argparse.ArgumentParser:
         '--min-ident',
         metavar="<float>",
         type=ranged_float_type,
-        default=0.1,
+        default=0.7,
         help='Filter genome pairs based on minimum sequence identity of '
         'the shorter sequence (0-1) [%(default)s]'
     )
@@ -143,7 +141,7 @@ def get_parser() -> argparse.ArgumentParser:
     prefilter_parser.add_argument(
         '--keep_temp',
         action="store_true",
-        help='Keep temporary kmer-db files [%(default)s]'
+        help='Keep temporary Kmer-db files [%(default)s]'
     )
     prefilter_parser.add_argument(
         '--bin',
@@ -151,7 +149,7 @@ def get_parser() -> argparse.ArgumentParser:
         type=pathlib.Path,
         dest="bin_kmerdb",
         default=f'{BIN_KMERDB}',
-        help='Path to the kmer-db binary [%(default)s]'
+        help='Path to the Kmer-db binary [%(default)s]'
     )
     prefilter_parser.add_argument(
         '--bin-fasta',
@@ -162,9 +160,17 @@ def get_parser() -> argparse.ArgumentParser:
         help='Path to the multi-fasta-split binary [%(default)s]'
     )
     prefilter_parser.add_argument(
+        '-t', '--threads',
+        metavar="<int>",
+        dest="num_threads",
+        type=int,
+        default=DEFAULT_THREAD_COUNT,
+        help='Number of threads (all by default) [%(default)s]'
+    )
+    prefilter_parser.add_argument(
         '-v', '--verbose',
         action="store_true",
-        help="Show kmer-db output"
+        help="Show Kmer-db progress"
     )
     prefilter_parser.add_argument(
         '-h', '--help',
@@ -179,8 +185,10 @@ def get_parser() -> argparse.ArgumentParser:
         formatter_class=fmt,
         add_help=False,
     )
-    align_parser._optionals.title = "Options"
-    align_parser.add_argument(
+    align_optional = align_parser._action_groups.pop()
+    align_required = align_parser.add_argument_group('required arguments')
+    align_parser._action_groups.append(align_optional)
+    align_required.add_argument(
         '-i', '--in',
         metavar='<file>',
         type=input_path_type,
@@ -188,13 +196,28 @@ def get_parser() -> argparse.ArgumentParser:
         help='Input FASTA file or directory with FASTA files',
         required=True
     )
-    align_parser.add_argument(
+    align_required.add_argument(
         '-o', '--out',
         metavar='<file>',
         type=pathlib.Path,
         dest='output_path',
         help='Output filename',
         required=True
+    )
+    align_parser.add_argument(
+        '--filter',
+        metavar='<file>',
+        type=input_path_type,
+        dest="filter_path",
+        help='Path to filter file (output of prefilter)'
+    )
+    align_parser.add_argument(
+        '--filter-threshold',
+        metavar='<float>',
+        dest='filter_threshold',
+        type=ranged_float_type,
+        default=0,
+        help='Align genome pairs above the threshold (0-1) [%(default)s]'
     )
     align_parser.add_argument(
         '--outfmt',
@@ -235,30 +258,7 @@ def get_parser() -> argparse.ArgumentParser:
         metavar='<float>',
         type=ranged_float_type,
         default=0,
-        help='Min. coverage to output (0-1) [%(default)s]'
-    )
-    align_parser.add_argument(
-        '--filter',
-        metavar='<file>',
-        type=input_path_type,
-        dest="filter_path",
-        help='Path to filter file (output of prefilter)'
-    )
-    align_parser.add_argument(
-        '--filter-threshold',
-        metavar='<float>',
-        dest='filter_threshold',
-        type=ranged_float_type,
-        default=0,
-        help='Align genome pairs above the threshold (0-1) [%(default)s]'
-    )
-    align_parser.add_argument(
-        '-t', '--threads',
-        metavar='<int>',
-        dest='num_threads',
-        type=int,
-        default=DEFAULT_THREAD_COUNT,
-        help='Number of threads (all by default) [%(default)s]'
+        help='Min. coverage (aligned fraction) to output (0-1) [%(default)s]'
     )
     align_parser.add_argument(
         '--bin',
@@ -325,9 +325,17 @@ def get_parser() -> argparse.ArgumentParser:
         help='Min. length of run ending approx. extension [%(default)s]'
     )
     align_parser.add_argument(
+        '-t', '--threads',
+        metavar='<int>',
+        dest='num_threads',
+        type=int,
+        default=DEFAULT_THREAD_COUNT,
+        help='Number of threads (all by default) [%(default)s]'
+    )
+    align_parser.add_argument(
         '-v', '--verbose',
         action="store_true",
-        help="Show lz-ani standard output"
+        help="Show LZ-ANI progress"
     )
     align_parser.add_argument(
         '-h', '--help',
@@ -342,8 +350,11 @@ def get_parser() -> argparse.ArgumentParser:
         formatter_class=fmt,
         add_help=False,
     )
-    cluster_parser._optionals.title = "Options"
-    cluster_parser.add_argument(
+    cluster_optional = cluster_parser._action_groups.pop()
+    cluster_required = cluster_parser.add_argument_group('required arguments')
+    cluster_parser._action_groups.append(cluster_optional)
+
+    cluster_required.add_argument(
         '-i', '--in',
         metavar='<file>',
         type=input_path_type,
@@ -351,7 +362,7 @@ def get_parser() -> argparse.ArgumentParser:
         help='Input file with ANI metrics (tsv)',
         required=True
     )
-    cluster_parser.add_argument(
+    cluster_required.add_argument(
         '-o', '--out',
         metavar='<file>',
         type=pathlib.Path,
@@ -359,7 +370,7 @@ def get_parser() -> argparse.ArgumentParser:
         help='Output filename',
         required=True
     )
-    cluster_parser.add_argument(
+    cluster_required.add_argument(
         '--ids',
         metavar='<file>',
         type=input_path_type,
@@ -430,7 +441,7 @@ def get_parser() -> argparse.ArgumentParser:
         dest='cov',
         type=ranged_float_type,
         default=0,
-        help='Min. coverage (0-1) [%(default)s]\n'
+        help='Min. coverage/aligned fraction (0-1) [%(default)s]\n'
     )
     cluster_parser.add_argument(
         '--num_alns',
@@ -454,12 +465,12 @@ def get_parser() -> argparse.ArgumentParser:
         type=pathlib.Path,
         dest="BIN_CLUSTY",
         default=f'{BIN_CLUSTY}',
-        help='Path to the clusty binary [%(default)s]'
+        help='Path to the Clusty binary [%(default)s]'
     )
     cluster_parser.add_argument(
         '-v', '--verbose',
         action="store_true",
-        help="Show kmer-db output"
+        help="Show Clusty progress"
     )
     cluster_parser.add_argument(
         '-h', '--help',
@@ -467,25 +478,57 @@ def get_parser() -> argparse.ArgumentParser:
         help='Show this help message and exit'
     )
 
-    # Display help message if the script is executed without any arguments.
+    # Show help message if the script is run without any arguments.
     if len(sys.argv[1:]) == 0:
         parser.print_help()
         parser.exit()
 
+    # Show subparser help message if the script is run without any arguments.
+    subparsers = [
+        ('prefilter', prefilter_parser),
+        ('align', align_parser),
+        ('cluster', cluster_parser),
+    ]
+    for name, subparser in subparsers:
+        if sys.argv[-1] == name:
+            subparser.print_help()
+            parser.exit()
+
     return parser
 
 
-def get_uuid() -> str:
-    """Return a unique identifier.
+def create_logger(name: str, log_level: int = logging.INFO) -> logging.Logger:
+    """Returns a logger to log events.
 
-    Returns:
-        str: A string representing a unique identifier.
+    Args:
+        name:
+            Name of the logger.
+        log_level:
+            The numeric level of the logging event (one of DEBUG, INFO etc.).
+
     """
+    logger = logging.getLogger(name)
+    logger.setLevel(log_level)
+
+    # Set log format to handlers
+    formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
+
+    # Create stream logger handler
+    sh = logging.StreamHandler()
+    sh.setLevel(log_level)
+    sh.setFormatter(formatter)
+    logger.addHandler(sh)
+
+    return logger
+
+
+def get_uuid() -> str:
+    """Returns a unique string identifier."""
     return f'vclust-{str(uuid.uuid4().hex)[:16]}'
 
 
 def validate_binary(bin_path: pathlib.Path) -> pathlib.Path:
-    """Verify if a binary file exists and is executable.
+    """Verifies if a binary file exists and is executable.
 
     Args:
         bin_path (Path): Path to the executable binary file.
@@ -505,7 +548,7 @@ def validate_binary(bin_path: pathlib.Path) -> pathlib.Path:
 
 
 def validate_args_fasta_input(args, parser) -> argparse.Namespace:
-    """Validate the arguments for FASTA input."""
+    """Validates the arguments for FASTA input."""
     args.is_multifasta = True
     args.fasta_paths = [args.input_path]
 
@@ -523,7 +566,7 @@ def validate_args_fasta_input(args, parser) -> argparse.Namespace:
 
 
 def validate_args_prefilter(args, parser) -> argparse.Namespace:
-    """Validate the arguments for the prefilter command."""
+    """Validates the arguments for the prefilter command."""
     if args.batch_size and args.input_path.is_dir():
         parser.error('--batch-size only handles a multi-fasta file'
             ', not a directory.')
@@ -531,8 +574,8 @@ def validate_args_prefilter(args, parser) -> argparse.Namespace:
 
 
 def validate_args_cluster(args, parser) -> argparse.Namespace:
-    """Validate the arguments for the cluster command."""
-    # Validate the similarity metric and threshold.
+    """Validates the arguments for the cluster command."""
+    # Check the metric and its threshold.
     args_dict = vars(args)
     args.metric_threshold = args_dict.get(args.metric, 0)
     if not args.metric_threshold:
@@ -545,7 +588,6 @@ def validate_args_cluster(args, parser) -> argparse.Namespace:
         if 'idx1' not in header and 'idx2' not in header:
             parser.error(
                 f'missing columns `idx1` and `idx2` in {args.input_path}')
-        
         options = ['tani', 'gani', 'ani', 'cov', 'num_alns']
         for name in options:
             value = args_dict[name]
@@ -554,27 +596,40 @@ def validate_args_cluster(args, parser) -> argparse.Namespace:
     return args
 
 
-def validate_process(func):
-    """Decorator to validate the result of a subprocess execution."""
-    def wrapper(*args, **kwargs):
-        process = func(*args, **kwargs)
-        if process.returncode:
-            print(f'error while running: {" ".join(process.args)}')
-            print(f'error message: {process.stderr}')
-            exit(1)
-        return process
-    return wrapper
+def run(
+        cmd: typing.List[str],
+        verbose: bool,
+        logger: logging.Logger
+    ) -> subprocess.CompletedProcess:
+    """Runs a given command as a subprocess and handle logging.
+
+    Returns:
+        subprocess.CompletedProcess: Completed process information.
+
+    """
+    logger.info(f'Running: {" ".join(cmd)}')
+    process = subprocess.run(
+        cmd,  
+        stdout=subprocess.DEVNULL, 
+        stderr=None if verbose else subprocess.PIPE,
+        text=True,
+    )
+    if process.returncode:
+        logger.error(f'While running: {" ".join(process.args)}')
+        logger.error(f'Error message: {process.stderr}')
+        exit(1)
+    logger.info(f'Done')
+    return process
 
 
-@validate_process
-def run_fastasplit(
+def cmd_fastasplit(
         input_fasta: pathlib.Path,
         out_dir: pathlib.Path,
         n: int,
         verbose: bool,
         bin_path = BIN_FASTASPLIT
-    ) -> subprocess.CompletedProcess:
-    """Run multi-fasta-split to split a fasta file into files of `n` sequences.
+    ) -> typing.List[str]:
+    """Constructs the command line for multi-fasta-split. 
     
     Args:
         input_fasta (Path):
@@ -589,27 +644,22 @@ def run_fastasplit(
             Path to the multi-fasta-split executable.
         
     Returns:
-        subprocess.CompletedProcess: Completed process information.
+        list: The constructed command as a list of strings.
         
     """
     cmd = [
-        f"{bin_path}", 
-        "-n", f"{n}",
-        "--out-prefix",
-        f"{out_dir}/part",
+        f'{bin_path}', 
+        '-n', f'{n}',
+        f'--verbosity',
+        f'{int(verbose)}',
+        '--out-prefix',
+        f'{out_dir}/part',
         f'{input_fasta}',
     ]
-    process = subprocess.run(
-        cmd,  
-        stdout=None if verbose else subprocess.DEVNULL, 
-        stderr=subprocess.PIPE,
-        text=True,
-    )
-    return process    
+    return cmd 
 
 
-@validate_process
-def run_kmerdb_build(
+def cmd_kmerdb_build(
         input_paths: pathlib.Path,
         txt_path: pathlib.Path,
         db_path: pathlib.Path,
@@ -618,8 +668,8 @@ def run_kmerdb_build(
         num_threads: int,
         verbose: bool = False,
         bin_path: pathlib.Path = BIN_KMERDB
-    ) -> subprocess.CompletedProcess:
-    """Run kmer-db build to create a database from FASTA file(s).
+    ) -> typing.List[str]:
+    """Constructs the command line for Kmer-db build.
 
     Args:
         input_fasta (Path):
@@ -638,7 +688,7 @@ def run_kmerdb_build(
             Path to the kmer-db executable.
 
     Returns:
-        subprocess.CompletedProcess: Completed process information.
+        list: The constructed command as a list of strings.
 
     """
     # Create a text file listing input FASTA files.
@@ -657,17 +707,10 @@ def run_kmerdb_build(
     ]
     if is_multisample_fasta:
         cmd.insert(2, '-multisample-fasta')
-    process = subprocess.run(
-        cmd,  
-        stdout=None if verbose else subprocess.DEVNULL, 
-        stderr=subprocess.PIPE,
-        text=True,
-    )
-    return process
+    return cmd
 
 
-@validate_process
-def run_kmerdb_all2all(
+def cmd_kmerdb_all2all(
         db_paths: typing.List[pathlib.Path],
         db_list_path: pathlib.Path,
         outfile_all2all: pathlib.Path,
@@ -675,8 +718,8 @@ def run_kmerdb_all2all(
         num_threads: int,
         verbose: bool,
         bin_path: pathlib.Path = BIN_KMERDB
-    ) -> subprocess.CompletedProcess:
-    """Run kmer-db all2all to find shared k-mers between genomic sequences.
+    ) -> typing.List[str]:
+    """Constructs the command line for Kmer-db all2all.
 
     Args:
         db_paths (list[Path]):
@@ -695,7 +738,7 @@ def run_kmerdb_all2all(
             Path to the kmer-db executable.
         
     Returns:
-        subprocess.CompletedProcess: Completed process information.
+        list: The constructed command as a list of strings.
 
     """
     with open(db_list_path, 'w') as oh:
@@ -711,24 +754,17 @@ def run_kmerdb_all2all(
         f'{db_list_path}' if len(db_paths) > 1 else f'{db_paths[0]}',
         f'{outfile_all2all}',
     ]
-    process = subprocess.run(
-        cmd,  
-        stdout=None if verbose else subprocess.DEVNULL, 
-        stderr=subprocess.PIPE,
-        text=True,
-    )
-    return process
+    return cmd
 
 
-@validate_process
-def run_kmerdb_distance(
+def cmd_kmerdb_distance(
         infile_all2all: pathlib.Path,
         min_value: float,
         num_threads: int,
         verbose: bool = False,
         bin_path: pathlib.Path = BIN_KMERDB
-    ) -> subprocess.CompletedProcess:
-    """Run kmer-db distance to estimate ANI between genomic sequences.
+    ) -> typing.List[str]:
+    """Constructs the command line for Kmer-db distance.
 
     Args:
         infile_all2all (Path):
@@ -743,7 +779,7 @@ def run_kmerdb_distance(
             Path to the kmer-db executable.
 
     Returns:
-        subprocess.CompletedProcess: Completed process information.
+        list: The constructed command as a list of strings.
 
     """
     cmd = [
@@ -755,17 +791,10 @@ def run_kmerdb_distance(
         "-t", f"{num_threads}",
         f'{infile_all2all}',
     ]
-    process = subprocess.run(
-        cmd,  
-        stdout=None if verbose else subprocess.DEVNULL, 
-        stderr=subprocess.PIPE,
-        text=True,
-    )
-    return process
+    return cmd
 
 
-@validate_process
-def run_lzani(
+def cmd_lzani(
         input_paths: typing.List[pathlib.Path],
         txt_path: pathlib.Path,
         output_path: pathlib.Path,
@@ -787,8 +816,8 @@ def run_lzani(
         num_threads: int,
         verbose: bool,
         bin_path: pathlib.Path = BIN_LZANI
-    ) -> subprocess.CompletedProcess:
-    """Run lz-ani to align genomic sequences.
+    ) -> typing.List[str]:
+    """Constructs the command line for LZ-ANI.
 
     Args:
         input_paths (List[Path]):
@@ -806,7 +835,7 @@ def run_lzani(
         out_ani (float):
             Minimum ANI to output.
         out_cov (float):
-            Minimum coverage to output.
+            Minimum coverage (aligned fraction) to output.
         filter_file (Path):
             Path to the filter file (prefilter's output).
         filter_threshold (float):
@@ -835,7 +864,7 @@ def run_lzani(
             Path to the lz-ani executable.
 
     Returns:
-        subprocess.CompletedProcess: Completed process information.
+        list: The constructed command as a list of strings.
 
     """
     # Create a text file listing input FASTA files.
@@ -881,17 +910,10 @@ def run_lzani(
     if verbose: 
         cmd.extend(['--verbose', '2'])
 
-    process = subprocess.run(
-        cmd,  
-        stdout=None if verbose else subprocess.DEVNULL, 
-        stderr=subprocess.PIPE,
-        text=True,
-    )
-    return process
+    return cmd
 
 
-@validate_process
-def run_clusty(
+def cmd_clusty(
         input_path: pathlib.Path,
         ids_path: pathlib.Path,
         output_path: pathlib.Path,
@@ -904,10 +926,9 @@ def run_clusty(
         num_alns: int,
         is_representatives: bool,
         leiden_resolution: float,
-        verbose: bool,
         bin_path=BIN_CLUSTY,
-    ) -> subprocess.CompletedProcess:
-    """Runs clusty to cluster genomic sequences.
+    ) -> typing.List[str]:
+    """Constructs the command line for Clusty.
 
     Args:
         input_path (Path):
@@ -929,7 +950,7 @@ def run_clusty(
         ani (float):
             Minimum ANI.
         cov (float):
-            Minimum coverage.
+            Minimum coverage (aligned fraction).
         num_alns (int):
             Maximum number of local alignments between two genomes.
         is_representatives (bool):
@@ -942,7 +963,7 @@ def run_clusty(
             Path to the clusty executable.
 
     Returns:
-        subprocess.CompletedProcess: Completed process information.
+        list: The constructed command as a list of strings.
     
     """
     cmd = [
@@ -970,13 +991,7 @@ def run_clusty(
         cmd.extend(['--leiden-resolution', f'{leiden_resolution}'])
 
     cmd.extend([f'{input_path}', f'{output_path}'])
-    process = subprocess.run(
-        cmd,  
-        stdout=None if verbose else subprocess.DEVNULL, 
-        stderr=subprocess.PIPE,
-        text=True,
-    )
-    return process
+    return cmd
 
 
 class CustomHelpFormatter(argparse.HelpFormatter):
@@ -1005,6 +1020,12 @@ def main():
     parser = get_parser()
     args = parser.parse_args()
 
+    # Initialize logger
+    logger = create_logger(
+        name='vclust',
+        log_level=logging.INFO if args.verbose else logging.ERROR,
+    )
+
     # Prefilter
     if args.command == 'prefilter':
         args.bin_kmerdb = validate_binary(args.bin_kmerdb)
@@ -1013,6 +1034,7 @@ def main():
 
         out_dir = args.output_path.parent / get_uuid()
         out_dir.mkdir(parents=True, exist_ok=True)
+        logger.info(f'Creating a temp directory: {out_dir}')
 
         batches = []
         # Input is a directory of fasta files.
@@ -1022,13 +1044,14 @@ def main():
             # Split multi-fasta file.
             if args.batch_size:
                 args.bin_fastasplit = validate_binary(args.bin_fastasplit)
-                p = run_fastasplit(
+                cmd = cmd_fastasplit(
                     input_fasta=args.input_path, 
                     out_dir=out_dir,
                     n=args.batch_size,
                     verbose=args.verbose,
                     bin_path=args.bin_fastasplit,
                 )
+                p = run(cmd, args.verbose, logger)
                 for f in out_dir.glob('part_*'):
                     batches.append([f])
                 batches.sort()
@@ -1039,12 +1062,13 @@ def main():
         num_batches = len(batches)
         db_paths = []
         for i, batch in enumerate(batches):
+            logger.info(f'Processing batch: {i+1} / {num_batches}')
             batch_id = f'part_{i:05d}' if num_batches > 1 else 'whole'
             txt_path = out_dir / f'{batch_id}.txt'
             db_path = out_dir / f'{batch_id}.kdb'
 
-            # Run kmer-db build.
-            p = run_kmerdb_build(
+            # kmer-db build.
+            cmd = cmd_kmerdb_build(
                 input_paths=batch, 
                 txt_path=txt_path,
                 db_path=db_path,
@@ -1054,6 +1078,7 @@ def main():
                 verbose=args.verbose,
                 bin_path=args.bin_kmerdb,
             )
+            p = run(cmd, args.verbose, logger)
             db_paths.append(db_path)
 
             # Regardless of verbosity, always delete the partial FASTA file 
@@ -1065,7 +1090,7 @@ def main():
         db_list_path = out_dir / 'db_list.txt'
         all2all_path = out_dir / 'all2all.txt'
 
-        p = run_kmerdb_all2all(
+        cmd = cmd_kmerdb_all2all(
             db_paths=db_paths,
             db_list_path=db_list_path,
             outfile_all2all=all2all_path,
@@ -1074,20 +1099,23 @@ def main():
             verbose=args.verbose,
             bin_path=args.bin_kmerdb,
         )
+        p = run(cmd, args.verbose, logger)
 
-        p = run_kmerdb_distance(
+        cmd = cmd_kmerdb_distance(
             infile_all2all=all2all_path,
             min_value=args.min_ident,
             num_threads=args.num_threads,
             verbose=args.verbose,
             bin_path=args.bin_kmerdb,
         )
+        p = run(cmd, args.verbose, logger)
 
         out_ani = out_dir / 'all2all.txt.ani-shorter'
         out_ani.rename(args.output_path)
 
         if not args.keep_temp:
             if out_dir.exists():
+                logger.info(f'Removing directory: {out_dir}')
                 shutil.rmtree(out_dir)
 
     # Align
@@ -1099,8 +1127,10 @@ def main():
         out_dir.mkdir(parents=True, exist_ok=True)
         txt_path = out_dir / 'ids.txt'
 
+        logger.info(f'Creating temporary directory: {out_dir}')
+
         # Run lz-ani.
-        p = run_lzani(
+        cmd = cmd_lzani(
             input_paths=args.fasta_paths,
             txt_path=txt_path,
             output_path=args.output_path,
@@ -1123,8 +1153,10 @@ def main():
             verbose=args.verbose,
             bin_path=args.bin_lzani,
         )
+        p = run(cmd, args.verbose, logger)
 
         if out_dir.exists():
+            logger.info(f'Removing directory: {out_dir}')
             shutil.rmtree(out_dir)
 
     # Cluster
@@ -1132,8 +1164,7 @@ def main():
         args.BIN_CLUSTY = validate_binary(args.BIN_CLUSTY)
         args = validate_args_cluster(args, parser)
 
-        # Run clusty
-        p = run_clusty(
+        cmd = cmd_clusty(
             input_path=args.input_path,
             ids_path=args.ids_path,
             output_path=args.output_path,
@@ -1146,10 +1177,9 @@ def main():
             num_alns=args.num_alns,
             is_representatives=args.representatives,
             leiden_resolution=args.leiden_resolution,
-            verbose=args.verbose,
             bin_path=args.BIN_CLUSTY,
         )
-
+        p = run(cmd, args.verbose, logger)
 
 if __name__ == '__main__':
     main()
