@@ -244,7 +244,7 @@ Additionally, Vclust may use extra threshold values for various combinations of 
 
 #### Cluster output
 
-The cluster command generates a TSV file with genome identifiers followed by 0-based cluster identifiers. The file includes all genomes, both clustered and singletons, listed in the same order as the IDs file (sorted by decreasing sequence length). The first genome in each cluster is the representative. For example, cluster `0` has `NC_005091.alt2` as its representative and includes `NC_005091.alt1` and `NC_005091.ref`.
+The cluster command generates a TSV file with genome identifiers followed by 0-based cluster identifiers. The file includes all input genomes, both clustered and singletons, listed in the same order as the IDs file (sorted by decreasing sequence length). The first genome in each cluster is the representative. For example, cluster `0` has `NC_005091.alt2` as its representative and includes `NC_005091.alt1` and `NC_005091.ref`.
 
 ```
 object	cluster
