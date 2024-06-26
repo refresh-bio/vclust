@@ -123,7 +123,7 @@ The `prefilter` command creates a pre-alignment filter, which eliminates dissimi
 ./vclust.py prefilter -i genomes.fna -o fltr.txt --k 25 --min-kmers 30 --min-ident 0.7 
 ```
 
-Large sets of genome sequences can be processed in smaller, equally-sized, batches of sequences to reduce memory consumption. 
+To reduce memory consumption, large sets of genome sequences can be processed in smaller, equally-sized, batches of sequences.
 
 ```bash
 # Process genomes in batches of 5 million sequences each.
