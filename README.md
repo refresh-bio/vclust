@@ -151,9 +151,9 @@ Without `--filter` Vclust aligns all possible genome pairs.
 ./vclust.py align -i genomes.fna -o ani.tsv
 ```
 
-#### 5.3. Align output
+#### Align output
 
-The `align` command creates two TSV files: one contains ANI values for genome pairs, and the other lists genome identifiers sorted by decreasing sequence length. Both TSV files are used as an input for Vclust's clustering. For example, the following command will create two TSV files: [ani.tsv](./example/output/ani.tsv) and [ani.ids.tsv](./example/output/ani.ids.tsv):
+The `align` command creates two TSV files: one contains ANI values for genome pairs, and the other lists genome identifiers sorted by decreasing sequence length. Both TSV files are used as input for Vclust's clustering. For example, the following command will create two TSV files: [ani.tsv](./example/output/ani.tsv) and [ani.ids.tsv](./example/output/ani.ids.tsv):
 
 ```bash
 ./vclust.py align -i genomes.fna -o ani.tsv --filter fltr.txt
@@ -184,7 +184,7 @@ To accommodate the output file size, Vclust offers three formats: `standard`, `l
 
 #### Align output filtering
 
-The `align` command enables filtering output by setting minimum thresholds for similarity measures. This allows reporting only genome pairs meeting the specified criteria, significantly reducing the output TSV file size:
+The `align` command enables filtering output by setting minimum thresholds for similarity measures. This ensures only genome pairs meeting the thresholds are reported, significantly reducing the output TSV file size.
 
 ```bash
 # Output only genome pairs with ANI ≥ 0.75 and coverage ≥ 0.75.
@@ -204,7 +204,7 @@ Vclust supports six clustering algorithms (`--algorithm`):
 5. `set-cover`: Set-Cover (greedy)
 6. `leiden`: the Leiden algorithm
 
-Clustering can use one of three similarity measures (`--metric`): `tani`, `gani`, or `ani`. The user-provided value of the selected similarity measure serves as the minimum similarity threshold for connecting genomes.
+Clustering uses one of three similarity measures (`--metric`): `tani`, `gani`, or `ani`. The user-provided threshold for the selected measure sets the minimum similarity required for connecting genomes.
 
 ```bash
 # Cluster genomes based on ANI and connect genomes if their ANI ≥ 95%.
@@ -223,7 +223,7 @@ Additionally, Vclust may use extra threshold values for various combinations of 
 
 #### Cluster output
 
-The `cluster` command creates a TSV file listing genome identifiers followed by 0-based numberical cluster identifiers. The file contains identifiers of all genomes, both clustered and singleton ones. Genome identifiers are listed in the same order as in the ids file (sorted by decreasing sequence length). Thus, the first genome in a cluster serves as a representative.
+The cluster command generates a TSV file with genome identifiers followed by 0-based cluster identifiers. The file includes all genomes, both clustered and singletons, listed in the same order as the IDs file (sorted by decreasing sequence length). The first genome in each cluster is the representative. For example, cluster `0` has `NC_005091.alt2` as its representative and includes `NC_005091.alt1` and `NC_005091.ref`.
 
 ```
 object	cluster
