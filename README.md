@@ -1,4 +1,4 @@
-# <img src="./images/logo.svg" alt="Vclust logo" /> vclust
+# <img src="./images/logo.svg" alt="Vclust logo" /> Vclust
 
 Vclust is an alignment-based tool for fast and accurate calculation of Average Nucleotide Identity (ANI) between complete or metagenomically-assembled viral genomes. The tool also performs ANI-based clustering of genomes according to standards recommended by international virus consortia, including *International Committee on Taxonomy of Viruses* (ICTV) and *Minimum Information about an Uncultivated Virus Genome* (MIUViG). 
 
