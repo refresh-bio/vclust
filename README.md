@@ -154,7 +154,9 @@ Without `--filter` Vclust aligns all possible genome pairs.
 
 #### Align output
 
-The `align` command creates two TSV files: one contains ANI values for genome pairs, and the other lists genome identifiers sorted by decreasing sequence length. Both TSV files are used as input for Vclust's clustering. For example, the following command will create two TSV files: [ani.tsv](./example/output/ani.tsv) and [ani.ids.tsv](./example/output/ani.ids.tsv):
+The `align` command creates two TSV files: one with ANI values for genome pairs and another with genome identifiers sorted by decreasing sequence length. Both TSV files can be used as input for Vclust's clustering. 
+
+The following command will create two TSV files: [ani.tsv](./example/output/ani.tsv) and [ani.ids.tsv](./example/output/ani.ids.tsv):
 
 ```bash
 ./vclust.py align -i genomes.fna -o ani.tsv --filter fltr.txt
