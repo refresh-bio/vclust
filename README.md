@@ -17,14 +17,14 @@ Vclust is an alignment-based tool for fast and accurate calculation of Average N
    3. [Cluster](#53-cluster)
       * [Cluster output](#cluster-output)
 6. [Examples](#examples)
-   1. [Classify viruses into species and genera using the ICTV standards](#classify-viruses-into-species-and-genera-using-the-ictv-standards)
-   2. [Assign viral contigs into vOTUs using the MIUViG standards](#assign-viral-contigs-into-votus-using-the-miuvig-standards)
-   3. [Dereplicate genomes](#dereplicate-genomes)
-   4. [Calculate pairwise similarities between all-versus-all genomes](#calculate-pairwise-similarities-between-all-versus-all-genomes)
-   5. [Process large datasets](#process-large-datasets)
-7. [Tests](#test)
-8. [Cite](#cite)
-9. [License](#license)
+   1. [Classify viruses into species and genera using the ICTV standards](#61-classify-viruses-into-species-and-genera-using-the-ictv-standards)
+   2. [Assign viral contigs into vOTUs using the MIUViG standards](#62-assign-viral-contigs-into-votus-using-the-miuvig-standards)
+   3. [Dereplicate genomes](#63-dereplicate-genomes)
+   4. [Calculate pairwise similarities between all-versus-all genomes](#64-calculate-pairwise-similarities-between-all-versus-all-genomes)
+   5. [Process large datasets](#65-process-large-datasets)
+7. [Tests](#7-test)
+8. [Cite](#8-cite)
+9. [License](#9-license)
 
 
 ## 1. Features
@@ -209,7 +209,7 @@ The `align` command enables filtering output by setting minimum thresholds for s
 ./vclust.py align -i genomes.fna -o ani.tsv --filter fltr.txt --out-ani 0.75 --out-cov 0.75
 ```
 
-### Cluster
+### 5.3. Cluster
 
 The `cluster` command takes as input two TSV files (outputs of `vclust align`) and clusters viral genomes using a user-selected clustering algorithm and similarity measures. Internally, Vclust uses [Clusty](https://github.com/refresh-bio/clusty), enabling large-scale clustering of millions of genome sequences by leveraging sparse distance matrices.
 
@@ -277,9 +277,9 @@ NC_010807.alt1	NC_010807.alt2
 NC_010807.ref	NC_010807.alt2
 ```
 
-## Examples
+## 6. Examples
 
-### Classify viruses into species and genera using the ICTV standards
+### 6.1. Classify viruses into species and genera using the ICTV standards
 
 The following commands perform VIRIDIC-like analysis by calculating the total ANI (tANI) between complete virus genomes and classifying these viruses into species and genera based on 95% and 70% tANI, respectively.
 
@@ -304,7 +304,7 @@ The following commands perform VIRIDIC-like analysis by calculating the total AN
 --metric tani --tani 0.70
 ```
 
-### Assign viral contigs into vOTUs using the MIUViG standards
+### 6.2. Assign viral contigs into vOTUs using the MIUViG standards
 
 The following commands assing contigs into viral operational taxonomic units (vOTUs) based on the MIUViG thresholds (ANI ≥ 95% and aligned fraction ≥ 85%).
 
@@ -325,7 +325,7 @@ The following commands assing contigs into viral operational taxonomic units (vO
 --metric ani --ani 0.95 --cov 0.85
 ```
 
-### Dereplicate genomes
+### 6.3. Dereplicate genomes
 
 The following commands reduce the sequence dataset to representative genomes.
 
@@ -345,7 +345,7 @@ The following commands reduce the sequence dataset to representative genomes.
 --metric ani --ani 0.95 --cov 0.85 --out-repr
 ```
 
-### Calculate pairwise similarities between all-versus-all genomes
+### 6.4. Calculate pairwise similarities between all-versus-all genomes
 
 The following command calculates ANI measures between all genome pairs in the dataset. For small datasets, using `prefilter` is optional. However, note that without it, Vclust will perform all-versus-all pairwise sequence alignments.
 
@@ -353,7 +353,7 @@ The following command calculates ANI measures between all genome pairs in the da
 ./vclust.py align -i genomes.fna -o ani.tsv --outfmt complete
 ```
 
-### Process large datasets
+### 6.5. Process large datasets
 
 The following commands reduce RAM usage and hard disk storage for processing metagenomic contigs from the [IMG/VR](https://genome.jgi.doe.gov/portal/IMG_VR/IMG_VR.home.html) database.
 
@@ -378,7 +378,7 @@ The following commands reduce RAM usage and hard disk storage for processing met
 ```
 
 
-## Test
+## 7. Test
 
 To ensure that Vclust works as expected, you can run tests using [pytest](https://docs.pytest.org/).
 
@@ -386,10 +386,10 @@ To ensure that Vclust works as expected, you can run tests using [pytest](https:
 pytest test.py
 ```
 
-## Cite
+## 8. Cite
 
 Zielezinski A, Gudyś A, Barylski J, Siminski K, Rozwalak P, Dutilh BE, Deorowicz S. *Ultrafast and accurate sequence alignment and clustering of viral genomes*. bioRxiv [[doi](https://google.pl)][[pubmed](https://google.pl)].
 
-## License
+## 9. License
 
 [GNU General Public License, version 3](https://www.gnu.org/licenses/gpl-3.0.html)
