@@ -31,7 +31,7 @@ Vclust is an alignment-based tool for fast and accurate calculation of Average N
 
 #### :star: Accurate ANI calculations
 
-Vclust uses a Lempel-Ziv-based pairwise sequence aligner ([LZ-ANI](https://github.com/refresh-bio/LZ-ANI)) for ANI calculation. LZ-ANI is based on the Lempel-Ziv parsing and achieves high sensitivity in discerning matched and mismatched nucleotides, thereby enabling accurate determination of ANI. Its efficiency stems from a simplified indel handling model, making LZ-ANI magnitudes faster than alignment-based tools (e.g., BLASTn, MegaBLAST) while maintaining accuracy comparable to the most sensitive BLASTn searches.
+Vclust uses a Lempel-Ziv-based pairwise sequence aligner ([LZ-ANI](https://github.com/refresh-bio/LZ-ANI)) for ANI calculation. LZ-ANI achieves high sensitivity in detecting matched and mismatched nucleotides, ensuring accurate ANI determination. Its efficiency comes from a simplified indel handling model, making LZ-ANI  magnitudes faster than alignment-based tools (e.g., BLASTn, MegaBLAST) while maintaining comparable accuracy to the most sensitive BLASTn searches.
 
 #### :triangular_ruler: Multiple similarity measures
 
