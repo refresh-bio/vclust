@@ -43,7 +43,7 @@ Vclust offers multiple similarity measures between two genome sequences, whereas
 - **Number of local alignments**: The count of individual alignments found between the sequences.
 - **Ratio between query and target genome lengths**: A measure comparing the lengths of the two genomes.
 
-####  :electron: Multiple clustering algorithms 
+#### :star2: Multiple clustering algorithms 
 
 Vclust provides six clustering algorithms tailored to various scenarios, including taxonomic classification and dereplication of viral genomes.
 - Single-linkage
