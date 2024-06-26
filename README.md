@@ -59,7 +59,7 @@ Vclust uses three efficient C++ tools - [Kmer-db](https://github.com/refresh-bio
 
 #### :earth_americas: Web service
 
-For datasets of fewer than 1000 viral genomes, vclust is available at [http://www.vclust.org](http://www.vclust.org).
+For datasets containing up to 1000 viral genomes, Vclust is available at [http://www.vclust.org](http://www.vclust.org).
 
 
 ## 2. Installation
