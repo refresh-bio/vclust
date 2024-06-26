@@ -285,7 +285,7 @@ The following commands perform VIRIDIC-like analysis by calculating the total AN
 
 ```bash
 # Create a pre-alignment filter for genome pairs with a minimum of 10 common k-mers
-# and a minim sequence identity of 70%.
+# and a minimum sequence identity of 70% (relative to the shortest sequence).
 ./vclust prefilter -i genomes.fna -o fltr.txt --min_kmers 10 --min-ident 0.7
 ```
 
@@ -299,18 +299,18 @@ The following commands perform VIRIDIC-like analysis by calculating the total AN
 ./vclust cluster -i ani.tsv -o species.tsv --ids ani.ids.tsv --algorithm complete \
 --metric tani --tani 0.95
 
-# Assign viruses into putative genus (tANI ≥ 70%).
+# Assign viruses into putative genera (tANI ≥ 70%).
 ./vclust cluster -i ani.tsv -o genus.tsv --ids ani.ids.tsv --algorithm complete \
 --metric tani --tani 0.70
 ```
 
 ### 6.2. Assign viral contigs into vOTUs using the MIUViG standards
 
-The following commands assing contigs into viral operational taxonomic units (vOTUs) based on the MIUViG thresholds (ANI ≥ 95% and aligned fraction ≥ 85%).
+The following commands assign contigs into viral operational taxonomic units (vOTUs) based on the MIUViG thresholds (ANI ≥ 95% and aligned fraction ≥ 85%).
 
 ```bash
 # Create a pre-alignment filter.
-./vclust prefilter -i genomes.fna -o fltr.txt --min_kmers 30 --min_ident 0.90
+./vclust prefilter -i genomes.fna -o fltr.txt --min_kmers 30 --min_ident 0.9
 ```
 
 ```bash
@@ -319,8 +319,7 @@ The following commands assing contigs into viral operational taxonomic units (vO
 ```
 
 ```bash
-# Cluster contigs into vOTUs using the MIUVIG recommended-thresholds and
-# the Leiden algorithm.
+# Cluster contigs into vOTUs using the MIUVIG thresholds and the Leiden algorithm.
 ./vclust cluster -i ani.tsv -o clusters.tsv --ids ani.ids.tsv --algorithm leiden \
 --metric ani --ani 0.95 --cov 0.85
 ```
@@ -365,14 +364,14 @@ The following commands reduce RAM usage and hard disk storage for processing met
 
 ```bash
 # Calculate ANI measures for genome pairs specified in the filter. Keep the output TSV
-# file relatively small-sized: use lite output format and report only genome pairs 
+# file relatively small-sized: use the lite output format and report only genome pairs 
 # with ANI ≥ 90% and coverage ≥ 80%.
 ./vclust align -i genomes -o ani.tsv --filter fltr.txt --outfmt lite \ 
 --out-ani 0.9 --out-cov 0.8
 ```
 
 ```bash
-# Cluster contigs.
+# Cluster contigs into vOTUs using the MIUVIG thresholds and the Leiden algorithm.
 ./vclust cluster -i ani.tsv -o clusters.tsv --ids ani.ids.tsv --algorithm leiden \
 --metric ani --ani 0.95 --cov 0.85
 ```
