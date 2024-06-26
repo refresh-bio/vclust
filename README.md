@@ -29,11 +29,11 @@ Vclust is an alignment-based tool for fast and accurate calculation of Average N
 
 ## 1. Features
 
-#### :star: Accurate ANI calculations
+#### i. Accurate ANI calculations :star:
 
 Vclust uses a Lempel-Ziv-based pairwise sequence aligner ([LZ-ANI](https://github.com/refresh-bio/LZ-ANI)) for ANI calculation. It is magnitudes faster than BLAST-based tools (e.g., VIRIDIC) and equally accurate as the most sensitive BLASTn searches.
 
-#### :triangular_ruler: Multiple similarity measures
+#### ii. Multiple similarity measures :triangular_ruler: 
 
 Vclust offers multiple similarity measures between two genome sequences, whereas other tools typically provide only one or two.
 - **ANI**: number of identical bases across local alignments divided by the total length of the alignments.
@@ -43,7 +43,7 @@ Vclust offers multiple similarity measures between two genome sequences, whereas
 - Number of local alignments
 - Ratio between query and target genome lengths
 
-#### :electron: Multiple clustering algorithms
+#### iii. Multiple clustering algorithms :electron: 
 
 Vclust provides six clustering algorithms tailored to various scenarios, including taxonomic classification and dereplication of viral genomes.
 - Single-linkage
@@ -53,11 +53,11 @@ Vclust provides six clustering algorithms tailored to various scenarios, includi
 - Greedy set cover (adopted from MMseqs2)
 - Leiden algorithm
 
-#### :fire: Speed and efficiency
+#### iv. Speed and efficiency :fire: 
 
 Vclust uses three efficient C++ tools - [Kmer-db](https://github.com/refresh-bio/kmer-db), [LZ-ANI](https://github.com/refresh-bio/LZ-ANI), [Clusty](https://github.com/refresh-bio/clusty) - for prefiltering, aligning, calculating ANI, and clustering viral genomes. This combination enables the processing of millions of virus genomes within a few hours on a mid-range workstation.
 
-#### :earth_americas: Web service
+#### v. Web service :earth_americas: 
 
 For datasets of fewer than 1000 viral genomes, vclust is available [on-line](www.google.pl).
 
