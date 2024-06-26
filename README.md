@@ -180,7 +180,7 @@ idx1 idx2 id1             id2             tani      gani      ani       cov num_
 11  10    NC_010807.ref   NC_010807.alt1  0.996664  0.996780  0.996780  1.000000  22  1.0000
 ```
 
-To accommodate the output file size, Vclust offers three formats: `standard`, `lite`, `complete`.
+To manage output file size, Vclust offers three formats: `standard`, `lite`, `complete`.
 
 ```bash
 ./vclust.py align -i genomes.fna -o ani.tsv --filter fltr.txt --outfmt lite
