@@ -165,7 +165,7 @@ The following command will create two TSV files: [ani.tsv](./example/output/ani.
 Sample output:
 
 ```
-idx1 idx2 id1             id2             tani      gani      ani       cov  num_alns len_ratio
+idx1 idx2 id1             id2             tani      gani      ani       cov num_alns len_ratio
 8    9    NC_010807.alt2  NC_010807.alt3  0.969793  0.980939  0.986608  0.994255  51  1.016645
 9    8    NC_010807.alt3  NC_010807.alt2  0.969793  0.958462  0.985184  0.972876  48  0.983627
 8   10    NC_010807.alt2  NC_010807.alt1  0.986229  0.986266  0.986363  0.999901  29  1.044828
