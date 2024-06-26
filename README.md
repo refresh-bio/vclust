@@ -131,7 +131,7 @@ Large sets of genome sequences can be processed in smaller, equally-sized, batch
 
 ### 5.2. Align
 
-The `align` command conducts parwise sequence alignments among viral genomes and provides similarity measures like ANI and coverage (alignment fraction). For this purpose, Vclust uses the sensitive and efficent [LZ-ANI](https://github.com/refresh-bio/LZ-ANI) aligner, which is based on the Lempel-Ziv parsing.
+The `align` command conducts pairwise sequence alignments among viral genomes and provides similarity measures like ANI and coverage (alignment fraction). For this purpose, Vclust uses the [LZ-ANI](https://github.com/refresh-bio/LZ-ANI) aligner, which is based on the Lempel-Ziv parsing and achieves high sensitivity in discerning matched and mismatched nucleotides, thereby enabling accurate determination of ANI. Its efficiency stems from a simplified indel handling model, making LZ-ANI magnitudes faster than alignment-based tools (e.g., BLASTn, MegaBLAST) while maintaining accuracy comparable to the most sensitive BLASTn searches.
 
 ```bash
 # Align genome pairs filtered by the prefiltering command.
@@ -370,7 +370,7 @@ pytest test.py
 
 ## Cite
 
-TODO
+Zielezinski A, Gudyś A, Barylski J, Siminski K, Rozwalak P, Dutilh BE, Deorowicz S. *Ultrafast and accurate sequence alignment and clustering of viral genomes*. bioRxiv [[doi](https://google.pl)][[pubmed](https://google.pl)].
 
 ## License
 
