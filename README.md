@@ -5,35 +5,35 @@ Vclust is an alignment-based tool for fast and accurate calculation of Average N
 
 ## Table of contents
 
-* [Features](#features)
-* [Installation](#installation)
-* [Quick Start](#quick-start)
-* [Input data](#input-data)
-* [Usage](#usage)
-   * [Prefilter](#prefilter)
-   * [Align](#align)
+1. [Features](#1-features)
+2. [Installation](#2-installation)
+3. [Quick Start](#3-quick-start)
+4. [Input data](#4-input-data)
+5. [Usage](#5-usage)
+   1. [Prefilter](#51-prefilter)
+   2. [Align](#52-align)
       * [Align output](#align-output)
       * [Align output filtering](#align-output-filtering)
-   * [Cluster](#cluster)
+   3. [Cluster](#53-cluster)
       * [Cluster output](#cluster-output)
-* [Examples](#examples)
-   * [Classify viruses into species and genera using the ICTV standards](#classify-viruses-into-species-and-genera-using-the-ictv-standards)
-   * [Assign viral contigs into vOTUs using the MIUViG standards](#assign-viral-contigs-into-votus-using-the-miuvig-standards)
-   * [Dereplicate genomes](#dereplicate-genomes)
-   * [Calculate pairwise similarities between all-versus-all genomes](#calculate-pairwise-similarities-between-all-versus-all-genomes)
-   * [Process large datasets](#process-large-datasets)
-* [Tests](#test)
-* [Cite](#cite)
-* [License](#license)
+6. [Examples](#examples)
+   1. [Classify viruses into species and genera using the ICTV standards](#classify-viruses-into-species-and-genera-using-the-ictv-standards)
+   2. [Assign viral contigs into vOTUs using the MIUViG standards](#assign-viral-contigs-into-votus-using-the-miuvig-standards)
+   3. [Dereplicate genomes](#dereplicate-genomes)
+   4. [Calculate pairwise similarities between all-versus-all genomes](#calculate-pairwise-similarities-between-all-versus-all-genomes)
+   5. [Process large datasets](#process-large-datasets)
+7. [Tests](#test)
+8. [Cite](#cite)
+9. [License](#license)
 
 
-## Features
+## 1. Features
 
-#### 1. Accurate ANI calculations
+#### Accurate ANI calculations
 
 Vclust uses a Lempel-Ziv-based pairwise sequence aligner ([LZ-ANI](https://github.com/refresh-bio/LZ-ANI)) for ANI calculation. It is magnitudes faster than BLAST-based tools (e.g., VIRIDIC) and equally accurate as the most sensitive BLASTn searches.
 
-#### 2. Multiple similarity measures
+#### Multiple similarity measures
 
 Vclust offers multiple similarity measures between two genome sequences, whereas other tools typically provide only one or two.
 - **ANI**: number of identical bases across local alignments divided by the total length of the alignments.
@@ -43,7 +43,7 @@ Vclust offers multiple similarity measures between two genome sequences, whereas
 - Number of local alignments
 - Ratio between query and target genome lengths
 
-#### 3. Multiple clustering algorithms
+#### Multiple clustering algorithms
 
 Vclust provides six clustering algorithms tailored to various scenarios, including taxonomic classification and dereplication of viral genomes.
 - Single-linkage
@@ -53,16 +53,16 @@ Vclust provides six clustering algorithms tailored to various scenarios, includi
 - Greedy set cover (adopted from MMseqs2)
 - Leiden algorithm
 
-#### 4. Speed and efficiency
+#### Speed and efficiency
 
 Vclust uses three efficient C++ tools - [Kmer-db](https://github.com/refresh-bio/kmer-db), [LZ-ANI](https://github.com/refresh-bio/LZ-ANI), [Clusty](https://github.com/refresh-bio/clusty) - for prefiltering, aligning, calculating ANI, and clustering viral genomes. This combination enables the processing of millions of virus genomes within a few hours on a mid-range workstation.
 
-#### 5. Web service
+#### Web service
 
 For datasets of fewer than 1000 viral genomes, vclust is available [on-line](www.google.pl).
 
 
-## Installation
+## 2. Installation
 
 To install Vclust you can compile dependencies from source or download statically compiled binaries.
 
@@ -80,7 +80,7 @@ make -j
 
 TODO
 
-## Quick start
+## 3. Quick start
 
 1. **Prefilter** similar genome sequence pairs before conducting pairwise alignments.
 
@@ -100,11 +100,11 @@ TODO
 ./vclust.py cluster -i ani.tsv -o clusters.tsv --ids ani.data.tsv --metric ani --ani 0.95
 ```
 
-## Input data
+## 4. Input data
 
 Vclust accepts a single FASTA file containing viral genomic sequences ([example](./example/multifasta.fna)) or a directory of FASTA files (one genome per file) ([example](./example/fna/)). The input file(s) can be gzipped.
 
-## Usage
+## 5. Usage
 
 Vclust provides three commands: `prefilter`, `align`, and `cluster`. Calls to these commands follow the structure:
 
@@ -112,7 +112,7 @@ Vclust provides three commands: `prefilter`, `align`, and `cluster`. Calls to th
 ./vclust.py command -i <input> -o <output> [options]
 ```
 
-### Prefilter
+### 5.1. Prefilter
 
 The `prefilter` command creates a pre-alignment filter, which eliminates dissimilar genome pairs before calculating pairwise alignments. This process reduces the number of potential genome pairs to only those with sufficient *k*-mer-based sequence similarity. The *k*-mer-based sequence similarity between two genomes is controlled by two options: minimum number of common *k*-mers (`--min-kmers`) and minimum sequence identity of the shorter sequence (`--min-ident`). Both *k*-mer-based similarities are computed using [Kmer-db 2](https://github.com/refresh-bio/kmer-db) which evaluates the entire set of *k*-mers, overcoming the sampling constraints typical of sketching methods like FastANI and Mash. In addittion, the use of sparse distance matrices enables memory-efficient processing of millions of genomes.
 
@@ -129,7 +129,7 @@ Large sets of genome sequences can be processed in smaller, equally-sized, batch
 ./vclust.py prefilter -i genomes.fna -o fltr.txt --batch-size 5000000
 ```
 
-### Align
+### 5.2. Align
 
 The `align` command conducts parwise sequence alignments among viral genomes and provides similarity measures like ANI and coverage (alignment fraction). For this purpose, Vclust uses the sensitive and efficent [LZ-ANI](https://github.com/refresh-bio/LZ-ANI) aligner, which is based on the Lempel-Ziv parsing.
 
@@ -151,7 +151,7 @@ Without `--filter` Vclust aligns all possible genome pairs.
 ./vclust.py align -i genomes.fna -o ani.tsv
 ```
 
-#### Align output
+#### 5.3. Align output
 
 The `align` command creates two TSV files: one contains ANI values for genome pairs, and the other lists genome identifiers sorted by decreasing sequence length. Both TSV files are used as an input for Vclust's clustering. For example, the following command will create two TSV files: [ani.tsv](./example/output/ani.tsv) and [ani.ids.tsv](./example/output/ani.ids.tsv):
 
