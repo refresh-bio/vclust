@@ -31,7 +31,7 @@ Vclust is an alignment-based tool for fast and accurate calculation of Average N
 
 #### :star: Accurate ANI calculations
 
-Vclust uses a Lempel-Ziv-based pairwise sequence aligner ([LZ-ANI](https://github.com/refresh-bio/LZ-ANI)) for ANI calculation. It is magnitudes faster than BLAST-based tools (e.g., VIRIDIC) and equally accurate as the most sensitive BLASTn searches.
+Vclust uses a Lempel-Ziv-based pairwise sequence aligner ([LZ-ANI](https://github.com/refresh-bio/LZ-ANI)) for ANI calculation. LZ-ANI is based on the Lempel-Ziv parsing and achieves high sensitivity in discerning matched and mismatched nucleotides, thereby enabling accurate determination of ANI. Its efficiency stems from a simplified indel handling model, making LZ-ANI magnitudes faster than alignment-based tools (e.g., BLASTn, MegaBLAST) while maintaining accuracy comparable to the most sensitive BLASTn searches.
 
 #### :triangular_ruler: Multiple similarity measures
 
@@ -59,7 +59,7 @@ Vclust uses three efficient C++ tools - [Kmer-db](https://github.com/refresh-bio
 
 #### :earth_americas: Web service
 
-For datasets of fewer than 1000 viral genomes, vclust is available [on-line](www.google.pl).
+For datasets of fewer than 1000 viral genomes, vclust is available at [www.vclust.org](www.vclust.org).
 
 
 ## 2. Installation
@@ -131,7 +131,7 @@ Large sets of genome sequences can be processed in smaller, equally-sized, batch
 
 ### 5.2. Align
 
-The `align` command conducts pairwise sequence alignments among viral genomes and provides similarity measures like ANI and coverage (alignment fraction). For this purpose, Vclust uses the [LZ-ANI](https://github.com/refresh-bio/LZ-ANI) aligner, which is based on the Lempel-Ziv parsing and achieves high sensitivity in discerning matched and mismatched nucleotides, thereby enabling accurate determination of ANI. Its efficiency stems from a simplified indel handling model, making LZ-ANI magnitudes faster than alignment-based tools (e.g., BLASTn, MegaBLAST) while maintaining accuracy comparable to the most sensitive BLASTn searches.
+The `align` command conducts pairwise sequence alignments among viral genomes and provides similarity measures like ANI and coverage (alignment fraction). For this purpose, Vclust uses the fast and efficient [LZ-ANI](https://github.com/refresh-bio/LZ-ANI) aligner.
 
 ```bash
 # Align genome pairs filtered by the prefiltering command.
