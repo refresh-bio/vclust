@@ -36,9 +36,9 @@ Vclust uses a Lempel-Ziv-based pairwise sequence aligner ([LZ-ANI](https://githu
 #### :triangular_ruler: Multiple similarity measures
 
 Vclust offers multiple similarity measures between two genome sequences, whereas other tools typically provide only one or two.
-- **ANI**: The number of identical bases across local alignments divided by the total length of the alignments.
-- **Global ANI (gANI)**: The number of identical bases across local alignments divided by the length of the query/target genome.
-- **Total ANI (tANI)**: The number of identical bases between query-target and target-query genomes divided by the sum length of both genomes.
+- **ANI**: The number of identical nucleotides across local alignments divided by the total length of the alignments.
+- **Global ANI (gANI)**: The number of identical nucleotides across local alignments divided by the length of the query/target genome.
+- **Total ANI (tANI)**: The number of identical nucleotides between query-target and target-query genomes divided by the sum length of both genomes.
 - **Coverage (alignment fraction)**: The proportion of the query sequence aligned with the target sequence.
 - **Number of local alignments**: The count of individual alignments found between the sequences.
 - **Ratio between query and target genome lengths**: A measure comparing the lengths of the two genomes.
