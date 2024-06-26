@@ -1,0 +1,13 @@
+[submodule "3rd_party/kmer-db"]
+	path = 3rd_party/kmer-db
+	url = https://github.com/refresh-bio/kmer-db-dev.git
+	branch = develop
+[submodule "3rd_party/lz-ani"]
+	path = 3rd_party/lz-ani
+	url = https://github.com/refresh-bio/LZ-ANI.git
+[submodule "3rd_party/ref-utils"]
+	path = 3rd_party/ref-utils
+	url = https://github.com/refresh-bio/ref-utils-dev.git
+[submodule "3rd_party/clusty"]
+	path = 3rd_party/clusty
+	url = https://github.com/refresh-bio/clusty-dev.git
