@@ -64,7 +64,7 @@ For datasets containing up to 1000 viral genomes, Vclust is available at [http:/
 
 ## 2. Installation
 
-To install Vclust you can compile dependencies from source or download statically compiled binaries.
+To install Vclust you can compile dependencies (requires MAKE and g++ version 11 or higher) from source or download statically compiled binaries.
 
 ### Option 1: Compile from source
 
