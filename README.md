@@ -51,7 +51,7 @@ Vclust provides six clustering algorithms tailored to various scenarios, includi
 - UCLUST
 - CD-HIT (Greedy incremental)
 - Greedy set cover (adopted from MMseqs2)
-- Leiden algorithm
+- Leiden algorithm [optional]
 
 #### :fire: Speed and efficiency 
 
@@ -68,17 +68,40 @@ To install Vclust you can compile dependencies from source or download staticall
 
 ### Option 1: Compile from source
 
-Clone this repository recursively with submodules and compile it.
+Clone this repository and its submodules:
 
 ```bash
 git clone --recurse-submodules https://github.com/refresh-bio/vclust
 cd vclust
+```
+
+#### Default Installation
+
+The default installation of Vclust includes all functionalities except for the Leiden clustering algorithm.
+
+```bash
 make -j
+```
+
+#### Installation with Leiden Algorithm Support
+
+Vclust provides igraph's implementation of the Leiden algorithm. However, because igraph requires several external dependencies (CMake 3.18, Flex, Bison), it is not integrated with Vclust by default. To install these dependencies under Debian/Ubuntu Linux, use the following command:
+
+```bash
+sudo apt-get install cmake flex bison
+```
+
+Then, build Vclust with Leiden algorithm support:
+
+```
+make -j LEIDEN=true
 ```
 
 ### Option 2: Download precompiled binaries
 
-The easiest way to get started is by downloading the prebuilt binaries from the Releases page. Select your platform and download the tool.
+The quickest way to get started is by downloading prebuilt binaries from the Releases page. These binaries include the Leiden algorithm by default. Select your platform and download the tool.
+
+
 
 ## 3. Quick start
 
