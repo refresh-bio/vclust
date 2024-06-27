@@ -71,8 +71,8 @@ To install Vclust you can compile dependencies from source or download staticall
 Clone this repository recursively with submodules and compile it.
 
 ```bash
-git clone --recurse-submodules https://github.com/refresh-bio/vclust-dev
-cd vclust-dev
+git clone --recurse-submodules https://github.com/refresh-bio/vclust
+cd vclust
 make -j
 ```
 
