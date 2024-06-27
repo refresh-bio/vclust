@@ -78,7 +78,7 @@ make -j
 
 ### Option 2: Download precompiled binaries
 
-TODO
+The easiest way to get started is by downloading the prebuilt binaries from the Releases page. Select your platform and download the tool.
 
 ## 3. Quick start
 
