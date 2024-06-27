@@ -61,25 +61,29 @@ Vclust uses three efficient C++ tools - [Kmer-db](https://github.com/refresh-bio
 
 For datasets containing up to 1000 viral genomes, Vclust is available at [http://www.vclust.org](http://www.vclust.org).
 
-
 ## 2. Installation
 
-To install Vclust you can compile dependencies (requires MAKE and g++ version 11 or higher) from source or download statically compiled binaries.
+To install Vclust you can download statically compiled binaries or compile dependencies from source.
 
-### Option 1: Compile from source
+### Option 1: Download precompiled binaries
 
-Clone this repository and its submodules:
+The quickest way to get started is by downloading prebuilt binaries from the [Releases page](https://github.com/refresh-bio/vclust/releases). These binaries include the Leiden algorithm by default. Select your platform and download the tool.
 
-```bash
-git clone --recurse-submodules https://github.com/refresh-bio/vclust
-cd vclust
-```
+### Option 2: Compile from source
+
+#### Requirements
+
+1. `make`
+2. `g++` version 11 or higher
+3. `cmake` version 3.12 or higher
 
 #### Default Installation
 
 The default installation of Vclust includes all functionalities except for the Leiden clustering algorithm.
 
 ```bash
+git clone --recurse-submodules https://github.com/refresh-bio/vclust
+cd vclust
 make -j
 ```
 
@@ -93,15 +97,11 @@ sudo apt-get install cmake flex bison
 
 Then, build Vclust with Leiden algorithm support:
 
-```
+```bash
+git clone --recurse-submodules https://github.com/refresh-bio/vclust
+cd vclust
 make -j LEIDEN=true
 ```
-
-### Option 2: Download precompiled binaries
-
-The quickest way to get started is by downloading prebuilt binaries from the Releases page. These binaries include the Leiden algorithm by default. Select your platform and download the tool.
-
-
 
 ## 3. Quick start
 
