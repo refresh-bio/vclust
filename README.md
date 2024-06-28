@@ -16,7 +16,7 @@ Vclust is an alignment-based tool for fast and accurate calculation of Average N
       * [Align output filtering](#align-output-filtering)
    3. [Cluster](#53-cluster)
       * [Cluster output](#cluster-output)
-6. [Examples](#examples)
+6. [Use cases](#use-cases)
    1. [Classify viruses into species and genera using the ICTV standards](#61-classify-viruses-into-species-and-genera-using-the-ictv-standards)
    2. [Assign viral contigs into vOTUs using the MIUViG standards](#62-assign-viral-contigs-into-votus-using-the-miuvig-standards)
    3. [Dereplicate genomes](#63-dereplicate-genomes)
@@ -252,7 +252,7 @@ Clustering uses one of three similarity measures (`--metric`): `tani`, `gani`, o
 
 ```bash
 # Cluster genomes based on ANI and connect genomes if their ANI ≥ 95%.
-./vclust cluster -i ani.tsv -o clusters.tsv --ids ani.ids.tsv --algorithm single \
+./vclust.py cluster -i ani.tsv -o clusters.tsv --ids ani.ids.tsv --algorithm single \
 --metric ani --ani 0.95
 ```
 
@@ -261,7 +261,7 @@ Additionally, Vclust may use extra threshold values for various combinations of 
 ```bash
 # Cluster genomes based on ANI similarity measure, but connect them only
 # if ANI ≥ 95% and coverage ≥ 85%.
-./vclust cluster -i ani.tsv -o clusters.tsv --ids ani.ids.tsv --algorithm single \
+./vclust.py cluster -i ani.tsv -o clusters.tsv --ids ani.ids.tsv --algorithm single \
 --metric ani --ani 0.95 --cov 0.85
 ```
 
@@ -303,7 +303,7 @@ NC_010807.alt1	NC_010807.alt2
 NC_010807.ref	NC_010807.alt2
 ```
 
-## 6. Examples
+## 6. Use cases
 
 ### 6.1. Classify viruses into species and genera using the ICTV standards
 
@@ -312,21 +312,21 @@ The following commands perform VIRIDIC-like analysis by calculating the total AN
 ```bash
 # Create a pre-alignment filter for genome pairs with a minimum of 10 common k-mers
 # and a minimum sequence identity of 70% (relative to the shortest sequence).
-./vclust prefilter -i genomes.fna -o fltr.txt --min_kmers 10 --min-ident 0.7
+./vclust.py prefilter -i genomes.fna -o fltr.txt --min_kmers 10 --min-ident 0.7
 ```
 
 ```bash
 # Calculate ANI measures for genome pairs specified in the filter.
-./vclust align -i genomes -o ani.tsv --filter fltr.txt
+./vclust.py align -i genomes -o ani.tsv --filter fltr.txt
 ```
 
 ```bash
 # Assign viruses into putative species (tANI ≥ 95%).
-./vclust cluster -i ani.tsv -o species.tsv --ids ani.ids.tsv --algorithm complete \
+./vvclust.py cluster -i ani.tsv -o species.tsv --ids ani.ids.tsv --algorithm complete \
 --metric tani --tani 0.95
 
 # Assign viruses into putative genera (tANI ≥ 70%).
-./vclust cluster -i ani.tsv -o genus.tsv --ids ani.ids.tsv --algorithm complete \
+./vclust.py cluster -i ani.tsv -o genus.tsv --ids ani.ids.tsv --algorithm complete \
 --metric tani --tani 0.70
 ```
 
@@ -336,7 +336,7 @@ The following commands assign contigs into viral operational taxonomic units (vO
 
 ```bash
 # Create a pre-alignment filter.
-./vclust prefilter -i genomes.fna -o fltr.txt --min_kmers 30 --min_ident 0.9
+./vclust.py prefilter -i genomes.fna -o fltr.txt --min_kmers 30 --min_ident 0.9
 ```
 
 ```bash
@@ -346,7 +346,7 @@ The following commands assign contigs into viral operational taxonomic units (vO
 
 ```bash
 # Cluster contigs into vOTUs using the MIUVIG thresholds and the Leiden algorithm.
-./vclust cluster -i ani.tsv -o clusters.tsv --ids ani.ids.tsv --algorithm leiden \
+./vclust.py cluster -i ani.tsv -o clusters.tsv --ids ani.ids.tsv --algorithm leiden \
 --metric ani --ani 0.95 --cov 0.85
 ```
 
@@ -356,17 +356,17 @@ The following commands reduce the sequence dataset to representative genomes.
 
 ```bash
 # Create a pre-alignment filter.
-./vclust prefilter -i genomes.fna -o fltr.txt --min_kmers 30 --min_ident 0.90
+./vclust.py prefilter -i genomes.fna -o fltr.txt --min_kmers 30 --min_ident 0.90
 ```
 
 ```bash
 # Calculate ANI measures for genome pairs specified in the filter.
-./vclust align -i genomes.fna -o ani.tsv --filter fltr.txt --out-ani 0.9
+./vclust.py align -i genomes.fna -o ani.tsv --filter fltr.txt --out-ani 0.9
 ```
 
 ```bash
 # Cluster contigs using the UCLUST algorithm and show representative genome.
-./vclust cluster -i ani.tsv -o clusters.tsv --ids ani.ids.tsv --algorithm uclust \
+./vclust.py cluster -i ani.tsv -o clusters.tsv --ids ani.ids.tsv --algorithm uclust \
 --metric ani --ani 0.95 --cov 0.85 --out-repr
 ```
 
@@ -380,11 +380,11 @@ The following command calculates ANI measures between all genome pairs in the da
 
 ### 6.5. Process large datasets
 
-The following commands reduce RAM usage and hard disk storage for processing metagenomic contigs from the [IMG/VR](https://genome.jgi.doe.gov/portal/IMG_VR/IMG_VR.home.html) database.
+The following commands help reduce RAM usage and hard disk storage, making them suitable for processing over 15 million metagenomic contigs from the [IMG/VR](https://genome.jgi.doe.gov/portal/IMG_VR/IMG_VR.home.html) database.
 
 ```bash
 # Create a pre-alignment filter by processing batches of 5 million genomes.
-./vclust prefilter -i genomes.fna -o fltr.txt --min_kmers 30 --min_ident 0.90 \
+./vclust.py prefilter -i genomes.fna -o fltr.txt --min_kmers 30 --min_ident 0.90 \
 --batch-size 5000000
 ```
 
@@ -392,15 +392,18 @@ The following commands reduce RAM usage and hard disk storage for processing met
 # Calculate ANI measures for genome pairs specified in the filter. Keep the output TSV
 # file relatively small-sized: use the lite output format and report only genome pairs 
 # with ANI ≥ 90% and coverage ≥ 80%.
-./vclust align -i genomes -o ani.tsv --filter fltr.txt --outfmt lite \ 
+./vclust.py align -i genomes -o ani.tsv --filter fltr.txt --outfmt lite \ 
 --out-ani 0.9 --out-cov 0.8
 ```
 
 ```bash
 # Cluster contigs into vOTUs using the MIUVIG thresholds and the Leiden algorithm.
-./vclust cluster -i ani.tsv -o clusters.tsv --ids ani.ids.tsv --algorithm leiden \
+./vclust.py cluster -i ani.tsv -o clusters.tsv --ids ani.ids.tsv --algorithm leiden \
 --metric ani --ani 0.95 --cov 0.85
 ```
+
+> [!NOTE]
+> Vclust is efficient for comparing genome sequences of diverse viruses across a wide range of sequence identities. However, its computational performance may decline with very large datasets of highly similar or nearly identical genomes (e.g., tens of thousands from the same species). After prefiltering, numerous sequence pairs may still require alignment and clustering, leading to increased RAM usage and longer run times.
 
 
 ## 7. Test
