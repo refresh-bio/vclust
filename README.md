@@ -16,7 +16,7 @@ Vclust is an alignment-based tool for fast and accurate calculation of Average N
       * [Align output filtering](#align-output-filtering)
    3. [Cluster](#53-cluster)
       * [Cluster output](#cluster-output)
-6. [Use cases](#use-cases)
+6. [Use cases](#6-use-cases)
    1. [Classify viruses into species and genera using the ICTV standards](#61-classify-viruses-into-species-and-genera-using-the-ictv-standards)
    2. [Assign viral contigs into vOTUs using the MIUViG standards](#62-assign-viral-contigs-into-votus-using-the-miuvig-standards)
    3. [Dereplicate genomes](#63-dereplicate-genomes)
