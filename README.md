@@ -329,7 +329,7 @@ The following commands perform VIRIDIC-like analysis by calculating the total AN
 
 ```bash
 # Assign viruses into putative species (tANI ≥ 95%).
-./vvclust.py cluster -i ani.tsv -o species.tsv --ids ani.ids.tsv --algorithm complete \
+./vclust.py cluster -i ani.tsv -o species.tsv --ids ani.ids.tsv --algorithm complete \
 --metric tani --tani 0.95
 
 # Assign viruses into putative genera (tANI ≥ 70%).
