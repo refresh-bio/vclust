@@ -319,7 +319,7 @@ The following commands perform VIRIDIC-like analysis by calculating the total AN
 ```bash
 # Create a pre-alignment filter for genome pairs with a minimum of 10 common k-mers
 # and a minimum sequence identity of 70% (relative to the shortest sequence).
-./vclust.py prefilter -i genomes.fna -o fltr.txt --min_kmers 10 --min-ident 0.7
+./vclust.py prefilter -i genomes.fna -o fltr.txt --min-kmers 10 --min-ident 0.7
 ```
 
 ```bash
@@ -343,7 +343,7 @@ The following commands assign contigs into viral operational taxonomic units (vO
 
 ```bash
 # Create a pre-alignment filter.
-./vclust.py prefilter -i genomes.fna -o fltr.txt --min_kmers 30 --min_ident 0.9
+./vclust.py prefilter -i genomes.fna -o fltr.txt --min-kmers 30 --min-ident 0.9
 ```
 
 ```bash
@@ -363,7 +363,7 @@ The following commands reduce the sequence dataset to representative genomes.
 
 ```bash
 # Create a pre-alignment filter.
-./vclust.py prefilter -i genomes.fna -o fltr.txt --min_kmers 30 --min_ident 0.90
+./vclust.py prefilter -i genomes.fna -o fltr.txt --min-kmers 30 --min-ident 0.90
 ```
 
 ```bash
@@ -391,7 +391,7 @@ The following commands help reduce RAM usage and hard disk storage, making them 
 
 ```bash
 # Create a pre-alignment filter by processing batches of 5 million genomes.
-./vclust.py prefilter -i genomes.fna -o fltr.txt --min_kmers 30 --min_ident 0.90 \
+./vclust.py prefilter -i genomes.fna -o fltr.txt --min-kmers 30 --min-ident 0.90 \
 --batch-size 5000000
 ```
 
