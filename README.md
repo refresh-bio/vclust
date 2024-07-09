@@ -19,19 +19,17 @@ Vclust is an alignment-based tool for fast and accurate calculation of Average N
 5. [Usage](#5-usage)
    1. [Prefilter](#51-prefilter)
    2. [Align](#52-align)
-      * [Align output](#align-output)
-      * [Align output filtering](#align-output-filtering)
    3. [Cluster](#53-cluster)
-      * [Cluster output](#cluster-output)
 6. [Use cases](#6-use-cases)
    1. [Classify viruses into species and genera using the ICTV standards](#61-classify-viruses-into-species-and-genera-using-the-ictv-standards)
    2. [Assign viral contigs into vOTUs using the MIUViG standards](#62-assign-viral-contigs-into-votus-using-the-miuvig-standards)
    3. [Dereplicate genomes](#63-dereplicate-genomes)
    4. [Calculate pairwise similarities between all-versus-all genomes](#64-calculate-pairwise-similarities-between-all-versus-all-genomes)
    5. [Process large datasets](#65-process-large-datasets)
-7. [Tests](#7-test)
-8. [Cite](#8-cite)
-9. [License](#9-license)
+7. [Limitations](#7-limitations)
+8. [Tests](#8-test)
+9. [Cite](#9-cite)
+10. [License](#10-license)
 
 
 ## 1. Features
@@ -410,10 +408,13 @@ The following commands help reduce RAM usage and hard disk storage, making them 
 ```
 
 > [!NOTE]
-> Vclust is efficient for comparing genome sequences of diverse viruses across a wide range of sequence identities. However, its computational performance may decline with very large datasets of highly similar or nearly identical genomes (e.g., tens of thousands from the same species). After prefiltering, numerous sequence pairs may still require alignment and clustering, leading to increased RAM usage and longer run times.
+> Please see: 7. Limitations
 
+## 7. Limitations
 
-## 7. Test
+Vclust is efficient for comparing genome sequences of diverse viruses across a wide range of sequence identities. However, RAM usage and running time may increase drastically in case of very large datasets of highly similar or nearly identical genomes (e.g., hundreds of thousands from the same species).
+
+## 8. Test
 
 To ensure that Vclust works as expected, you can run tests using [pytest](https://docs.pytest.org/).
 
@@ -421,10 +422,10 @@ To ensure that Vclust works as expected, you can run tests using [pytest](https:
 pytest test.py
 ```
 
-## 8. Cite
+## 9. Cite
 
-Zielezinski A, Gudyś A, Barylski J, Siminski K, Rozwalak P, Dutilh BE, Deorowicz S. *Ultrafast and accurate sequence alignment and clustering of viral genomes*. bioRxiv [[doi](https://google.pl)][[pubmed](https://google.pl)].
+Zielezinski A, Gudyś A, Barylski J, Siminski K, Rozwalak P, Dutilh BE, Deorowicz S. *Ultrafast and accurate sequence alignment and clustering of viral genomes*. bioRxiv [[doi:10.1101/2024.06.27.601020](https://www.biorxiv.org/content/10.1101/2024.06.27.601020)].
 
-## 9. License
+## 10. License
 
 [GNU General Public License, version 3](https://www.gnu.org/licenses/gpl-3.0.html)
