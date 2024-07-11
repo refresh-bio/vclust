@@ -793,7 +793,7 @@ def cmd_kmerdb_all2all(
 
     cmd = [
         f"{bin_path}", 
-        'all2all-parts' if len(db_paths) > 1 else 'all2all',
+        'all2all-parts' if len(db_paths) > 1 else 'all2all-sp',
         '-sparse',
         '-above', f'{kmer_count}', 
         "-t", f"{num_threads}",
