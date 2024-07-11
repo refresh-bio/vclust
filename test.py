@@ -31,6 +31,23 @@ def test_dir():
     shutil.rmtree(TMP_DIR)
 
 
+@pytest.mark.parametrize('subcommand',[
+    'prefilter', 'align', 'cluster',
+])
+def test_subcommands(subcommand):
+    cmd = [
+        f'{VCLUST.resolve()}',
+        f'{subcommand}',
+    ]
+    p = subprocess.run(cmd,
+        stdout=subprocess.PIPE, 
+        stderr=subprocess.PIPE,
+        text=True)
+    assert p.returncode == 0
+    assert not p.stderr
+    assert p.stdout
+
+
 @pytest.mark.parametrize('input,params,error_msg',[
     (FASTA_DIR, ['--batch-size', '4'], 'error: --batch-size'),
     (FASTA_DIR, ['--min-ident', '95'], 'between 0 and 1'),

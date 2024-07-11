@@ -68,7 +68,7 @@ For datasets containing up to 1000 viral genomes, Vclust is available at [http:/
 
 ## 2. Installation
 
-To install Vclust you can download statically compiled binaries or compile dependencies from source.
+To install Vclust you can download statically compiled binaries or compile dependencies from source. Vclust requires Python 3.7 or higher.
 
 ### Option 1: Download precompiled binaries
 

@@ -9,12 +9,13 @@ import logging
 import multiprocessing
 import pathlib
 import shutil
+import os
 import subprocess
 import sys
 import typing
 import uuid
 
-__version__ = '1.0.1'
+__version__ = '1.0.2'
 
 DEFAULT_THREAD_COUNT = min(multiprocessing.cpu_count(), 64)
 
@@ -524,26 +525,49 @@ def create_logger(name: str, log_level: int = logging.INFO) -> logging.Logger:
 
 def get_uuid() -> str:
     """Returns a unique string identifier."""
-    return f'vclust-{str(uuid.uuid4().hex)[:16]}'
+    return f'vclust-{str(uuid.uuid4().hex)[:10]}'
 
 
 def validate_binary(bin_path: pathlib.Path) -> pathlib.Path:
-    """Verifies if a binary file exists and is executable.
+    """Validates the existence and executability of a binary file.
+
+    This function checks if the provided path points to an existing binary file
+    and if it is executable. It also attempts to run the binary to ensure it
+    operates without errors.
 
     Args:
-        bin_path (Path): Path to the executable binary file.
+        bin_path:
+            The path to the executable binary file.
 
     Returns:
-        Path to the binary file.
+        pathlib.Path: The resolved path to the binary file.
 
     Raises:
-        SystemExit: If the binary file is not found or not executable.
-
+        SystemExit: If the binary file does not exist, is not executable, or 
+                    if running the binary encounters an error.
     """
+    bin_path = bin_path.resolve()
+
     if not bin_path.exists():
-        exit(f'error: executable not found: {bin_path.resolve()}')
-    if not shutil.which(bin_path):
-        exit(f'error: file not executable: {bin_path.resolve()}')
+        exit(f'error: Executable not found: {bin_path}')
+    
+    if not bin_path.is_file() or not os.access(bin_path, os.X_OK):
+        exit(f'error: Binary file not executable: {bin_path}')
+    
+    try:
+        process = subprocess.run(
+            [str(bin_path)],  
+            stdout=subprocess.DEVNULL, 
+            stderr=subprocess.PIPE,
+            text=True,
+            check=True
+        )
+    except subprocess.CalledProcessError as e:
+        exit(f'error: Running {bin_path} failed with message: {e.stderr}')
+    except OSError as e:
+        exit(f'error: OSError in {bin_path} - {e}')
+    except Exception as e:
+        exit(f'error: Unexpected error in binary {bin_path} - {e}')
     return bin_path
 
 
@@ -601,23 +625,45 @@ def run(
         verbose: bool,
         logger: logging.Logger
     ) -> subprocess.CompletedProcess:
-    """Runs a given command as a subprocess and handle logging.
+    """Executes a given command as a subprocess and handles logging.
+
+    This function runs the specified command, logs the execution details,
+    and manages errors. If verbose mode is enabled, the command's standard
+    error output is not suppressed. Otherwise, the standard error is piped
+    and logged in case of failure.
+
+    Args:
+        cmd:
+            The command to run as a list of strings.
+        verbose: 
+            Flag indicating whether to run the command in verbose mode.
+        logger:
+            The logger instance for logging information and errors.
 
     Returns:
-        subprocess.CompletedProcess: Completed process information.
+        subprocess.CompletedProcess: The completed process information.
 
+    Raises:
+        SystemExit: If the command fails to execute or an error occurs.
     """
     logger.info(f'Running: {" ".join(cmd)}')
-    process = subprocess.run(
-        cmd,  
-        stdout=subprocess.DEVNULL, 
-        stderr=None if verbose else subprocess.PIPE,
-        text=True,
-    )
-    if process.returncode:
-        logger.error(f'While running: {" ".join(process.args)}')
-        logger.error(f'Error message: {process.stderr}')
+    try:
+        process = subprocess.run(
+            cmd,  
+            stdout=subprocess.DEVNULL, 
+            stderr=None if verbose else subprocess.PIPE,
+            text=True,
+            check=True
+        )
+    except subprocess.CalledProcessError as e:
+        logger.error(f'Process {" ".join(cmd)} failed with message: {e.stderr}')
         exit(1)
+    except OSError as e:
+        logger.error(f'OSError: {" ".join(cmd)} failed with message: {e}')
+        exit(1)
+    except Exception as e:
+        logger.error(f'Unexpected: {" ".join(cmd)} failed with message: {e}')
+        exit(1)  
     logger.info(f'Done')
     return process
 
