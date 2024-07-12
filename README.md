@@ -160,7 +160,7 @@ To reduce memory consumption, large sets of genome sequences can be processed in
 
 ### 5.2. Align
 
-The `align` command conducts pairwise sequence alignments among viral genomes and provides similarity measures like ANI and coverage (alignment fraction). For this purpose, Vclust uses the fast and efficient [LZ-ANI](https://github.com/refresh-bio/LZ-ANI) aligner.
+The `align` command performs pairwise sequence alignments among viral genomes and provides similarity measures like ANI and coverage (alignment fraction). It uses the [LZ-ANI](https://github.com/refresh-bio/LZ-ANI) aligner, which, like BLAST-based methods, finds multiple local alignments (similar to HSPs in BLAST) between two genomic sequences to estimate ANI and other sequence similarity measures for that genome pair.
 
 ```bash
 # Align genome pairs filtered by the prefiltering command.
@@ -346,7 +346,7 @@ The following commands assign contigs into viral operational taxonomic units (vO
 
 ```bash
 # Calculate ANI measures for genome pairs specified in the filter.
-./vclust align -i genomes -o ani.tsv --filter fltr.txt
+./vclust.py align -i genomes -o ani.tsv --filter fltr.txt
 ```
 
 ```bash
