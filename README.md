@@ -1,9 +1,9 @@
 # <img src="./images/logo.svg" alt="Vclust logo" /> Vclust
 
+![version](https://img.shields.io/badge/version-1.0.3-blue.svg)
 ![x86-64](https://img.shields.io/static/v1?label=%E2%80%8B&message=x86-64&color=yellow&logo=PCGamingWiki&logoColor=white)
 ![ARM](https://img.shields.io/static/v1?label=%E2%80%8B&message=ARM&color=yellow&logo=Raspberry%20Pi&logoColor=white)
 ![Apple M](https://img.shields.io/static/v1?label=%E2%80%8B&message=Apple%20M&color=yellow&logo=Apple&logoColor=white)
-![Windows](https://img.shields.io/badge/%E2%80%8B-Windows-00A98F?logo=windows)
 ![Linux](https://img.shields.io/static/v1?label=%E2%80%8B&message=Linux&color=00A98F&logo=linux&logoColor=white)
 ![macOS](https://img.shields.io/badge/%E2%80%8B-macOS-00A98F?logo=apple)
 
@@ -68,7 +68,7 @@ For datasets containing up to 1000 viral genomes, Vclust is available at [http:/
 
 ## 2. Installation
 
-To install Vclust you can download statically compiled binaries or compile dependencies from source. Vclust requires Python 3.7 or higher.
+Vclust requires Python 3.7 or higher. To install Vclust, you can either download the pre-compiled binaries or compile the dependencies from source. The compilation process typically takes a few minutes.
 
 ### Option 1: Download precompiled binaries
 
@@ -109,6 +109,8 @@ make -j LEIDEN=true
 ```
 
 ## 3. Quick start
+
+Follow these steps to quickly run Vclust on the provided example genomes. The process takes just a few seconds.
 
 1. **Prefilter** similar genome sequence pairs before conducting pairwise alignments.
 
