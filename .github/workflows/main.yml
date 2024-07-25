@@ -1,1 +1,62 @@
+name: GitHub Actions CI
 
+on:
+  push:
+    branches: [ main, master, develop ]
+    paths-ignore:
+      - '**.md'
+  workflow_dispatch:
+ 
+jobs:
+
+########################################################################################
+  make:
+    name: Make
+    strategy:
+      fail-fast: false
+      matrix:
+        machine: [ubuntu-latest]
+        compiler: [g++-11]
+    runs-on: ['${{ matrix.machine }}']   
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    
+    - name: make
+      run: | 
+        make -j32 CXX=${{matrix.compiler}} 
+    - name: tar artifacts
+      run: tar -cvf vclust.tar ./vclust.py ./test.py ./example ./3rd_party/kmer-db/kmer-db ./3rd_party/lz-ani/lz-ani ./3rd_party/clusty/clusty
+    
+    - uses: actions/upload-artifact@v2
+      with:
+        name: executable-artifact-${{ matrix.machine }}
+        path: ./vclust.tar    
+
+########################################################################################
+  vir61-linkage:
+    name: Vir61
+    needs: make
+    strategy:
+      fail-fast: false
+      matrix:
+        machine: [ubuntu-latest]
+        compiler: [g++-11]
+     
+    runs-on: ['${{ matrix.machine }}']    
+    
+    steps:
+    - uses: actions/download-artifact@v2
+      with:
+        name: executable-artifact-${{ matrix.machine }}
+        path: ./
+
+    - name: untar artifacts
+      run: |
+        tar -xf vclust.tar
+    
+    - name: run pipeline
+      run: |
+        python test.py
