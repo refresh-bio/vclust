@@ -30,7 +30,7 @@ jobs:
     - name: tar artifacts
       run: tar -cvf vclust.tar ./vclust.py ./test.py ./example ./bin/kmer-db ./bin/lz-ani ./bin/clusty ./bin/multi-fasta-split
     
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v4
       with:
         name: executable-artifact-${{ matrix.machine }}
         path: ./vclust.tar    
@@ -48,7 +48,7 @@ jobs:
     runs-on: ['${{ matrix.machine }}']    
     
     steps:
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v4
       with:
         name: executable-artifact-${{ matrix.machine }}
         path: ./
