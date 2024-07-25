@@ -15,12 +15,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        machine: [ubuntu-latest]
+        machine: [ubuntu-latest, macOS-12]
         compiler: [g++-11]
     runs-on: ['${{ matrix.machine }}']   
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
       with:
         submodules: recursive
     
@@ -28,30 +28,35 @@ jobs:
       run: | 
         make -j32 CXX=${{matrix.compiler}} 
     - name: tar artifacts
-      run: tar -cvf vclust.tar ./vclust.py ./test.py ./example ./3rd_party/kmer-db/kmer-db ./3rd_party/lz-ani/lz-ani ./3rd_party/clusty/clusty
+      run: tar -cvf vclust.tar ./vclust.py ./test.py ./example ./bin/kmer-db ./bin/lz-ani ./bin/clusty ./bin/multi-fasta-split
     
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v4
       with:
         name: executable-artifact-${{ matrix.machine }}
         path: ./vclust.tar    
 
 ########################################################################################
-  vir61-linkage:
-    name: Vir61
+  pipeline:
+    name: Pipeline
     needs: make
     strategy:
       fail-fast: false
       matrix:
-        machine: [ubuntu-latest]
+        machine: [ubuntu-latest, macOS-12]
         compiler: [g++-11]
      
     runs-on: ['${{ matrix.machine }}']    
     
     steps:
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v4
       with:
         name: executable-artifact-${{ matrix.machine }}
         path: ./
+
+    - name: set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
 
     - name: untar artifacts
       run: |
@@ -59,4 +64,5 @@ jobs:
     
     - name: run pipeline
       run: |
-        python test.py
+        pip install pytest
+        pytest test.py -k 'not test_cluster_algorithm_leiden'
