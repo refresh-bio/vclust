@@ -65,4 +65,4 @@ jobs:
     - name: run pipeline
       run: |
         pip install pytest
-        pytest tests.py
+        pytest test.py
