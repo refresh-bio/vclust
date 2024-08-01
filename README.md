@@ -396,7 +396,7 @@ The following command calculates ANI measures between all genome pairs in the da
 
 ### 7.5. Process large datasets
 
-The following commands help reduce RAM usage and hard disk storage, making them suitable for processing over 15 million metagenomic contigs from the [IMG/VR](https://genome.jgi.doe.gov/portal/IMG_VR/IMG_VR.home.html) database.
+The following commands help reduce RAM usage and hard disk storage by using prefilter on smaller, equally-sized batches of sequences. The example shows processing over 15 million metagenomic contigs from the [IMG/VR](https://genome.jgi.doe.gov/portal/IMG_VR/IMG_VR.home.html) database.
 
 ```bash
 # Create a pre-alignment filter by processing batches of 5 million genomes.
@@ -419,11 +419,11 @@ The following commands help reduce RAM usage and hard disk storage, making them 
 ```
 
 > [!NOTE]
-> Please see: 7. Limitations
+> Please see: 8. Limitations
 
 ## 8. Limitations
 
-Vclust is efficient for comparing genome sequences of diverse viruses across a wide range of sequence identities. However, RAM usage and running time may increase drastically in case of very large datasets of highly similar or nearly identical genomes (e.g., hundreds of thousands from the same species).
+Vclust is efficient for comparing genome sequences of diverse viruses across a wide range of sequence identities. However, RAM usage and running time may increase drastically in large datasets of highly similar or nearly identical genomes (e.g., hundreds of thousands from the same species).
 
 ## 9. Test
 
