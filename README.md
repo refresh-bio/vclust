@@ -1,6 +1,6 @@
 # <img src="./images/logo.svg" alt="Vclust logo" /> Vclust
 
-![version](https://img.shields.io/badge/version-1.0.3-blue.svg)
+![version](https://img.shields.io/badge/version-1.0.4-blue.svg)
 [![GitHub downloads](https://img.shields.io/github/downloads/refresh-bio/vclust/total.svg?style=flag&label=GitHub%20downloads)](https://github.com/refresh-bio/vclust/releases)
 [![GitHub Actions CI](../../workflows/GitHub%20Actions%20CI/badge.svg)](../../actions/workflows/main.yml)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
