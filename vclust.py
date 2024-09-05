@@ -7,15 +7,15 @@ https://github.com/refresh-bio/vclust-dev
 import argparse
 import logging
 import multiprocessing
+import os
 import pathlib
 import shutil
-import os
 import subprocess
 import sys
 import typing
 import uuid
 
-__version__ = '1.0.4'
+__version__ = '1.1.0'
 
 DEFAULT_THREAD_COUNT = min(multiprocessing.cpu_count(), 64)
 
@@ -28,18 +28,17 @@ BIN_LZANI = BIN_DIR / 'lz-ani'
 BIN_CLUSTY = BIN_DIR / 'clusty'
 BIN_FASTASPLIT = BIN_DIR / 'multi-fasta-split'
 
-# lz-ani output columns
+# LZ-ANI output columns
 ALIGN_FIELDS = [
-    'idx1', 'idx2', 'id1', 'id2',  'tani', 'gani', 'ani', 'cov',
-    'num_alns', 'len_ratio', 'len1', 'len2',  'nt_match', 'nt_mismatch', 
+    'qidx', 'ridx', 'query', 'reference',  'tani', 'gani', 'ani', 'qcov',
+    'rcov', 'num_alns', 'len_ratio', 'qlen', 'rlen',  'nt_match', 'nt_mismatch', 
 ]
 # vclust align output formats
 ALIGN_OUTFMT = {
-    'lite': ALIGN_FIELDS[:2] + ALIGN_FIELDS[4:9],
-    'standard': ALIGN_FIELDS[:10],
+    'lite': ALIGN_FIELDS[:2] + ALIGN_FIELDS[4:11],
+    'standard': ALIGN_FIELDS[:11],
     'complete': ALIGN_FIELDS[:],
 }
-
 
 def get_parser() -> argparse.ArgumentParser:
     """Return an argument parser."""
@@ -67,7 +66,7 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         '-v', '--version',
         action='version',
-        version=f'v.{__version__}',
+        version=f'v{__version__}',
         help="Display the tool's version and exit"
     )
     parser.add_argument(
@@ -230,6 +229,13 @@ def get_parser() -> argparse.ArgumentParser:
         f'choices: {",".join(ALIGN_OUTFMT.keys())}'
     )
     align_parser.add_argument(
+        '--out-aln',
+        metavar='<file>',
+        type=pathlib.Path,
+        dest='aln_path',
+        help='Write alignments to the specified tsv file (optional).',
+    )
+    align_parser.add_argument(
         '--out-ani',
         dest='ani',
         metavar='<float>',
@@ -254,12 +260,22 @@ def get_parser() -> argparse.ArgumentParser:
         help='Min. gANI to output (0-1) [%(default)s]'
     )
     align_parser.add_argument(
-        '--out-cov',
-        dest='cov',
+        '--out-qcov',
+        dest='qcov',
         metavar='<float>',
         type=ranged_float_type,
         default=0,
-        help='Min. coverage (aligned fraction) to output (0-1) [%(default)s]'
+        help='Min. query coverage (aligned fraction) to output (0-1) '
+        '[%(default)s]'
+    )
+    align_parser.add_argument(
+        '--out-rcov',
+        dest='rcov',
+        metavar='<float>',
+        type=ranged_float_type,
+        default=0,
+        help='Min. reference coverage (aligned fraction) to output (0-1) '
+        '[%(default)s]'
     )
     align_parser.add_argument(
         '--bin',
@@ -267,7 +283,7 @@ def get_parser() -> argparse.ArgumentParser:
         type=pathlib.Path,
         dest='bin_lzani',
         default=f'{BIN_LZANI}',
-        help='Path to the lz-ani binary [%(default)s]'
+        help='Path to the LZ-ANI binary [%(default)s]'
     )
     align_parser.add_argument(
         '--mal',
@@ -418,7 +434,7 @@ def get_parser() -> argparse.ArgumentParser:
         dest='tani',
         type=ranged_float_type,
         default=0,
-        help='Min. total ANI (0-1) [%(default)s]\n'
+        help='Min. total ANI (0-1) [%(default)s]'
     )
     cluster_parser.add_argument(
         '--gani',
@@ -426,7 +442,7 @@ def get_parser() -> argparse.ArgumentParser:
         dest='gani',
         type=ranged_float_type,
         default=0,
-        help='Min. global ANI (0-1) [%(default)s]\n'
+        help='Min. global ANI (0-1) [%(default)s]'
     )
     cluster_parser.add_argument(
         '--ani',
@@ -434,15 +450,32 @@ def get_parser() -> argparse.ArgumentParser:
         dest='ani',
         type=ranged_float_type,
         default=0,
-        help='Min. ANI (0-1) [%(default)s]\n'
+        help='Min. ANI (0-1) [%(default)s]'
     )
     cluster_parser.add_argument(
-        '--cov',
+        '--qcov',
         metavar='<float>',
-        dest='cov',
+        dest='qcov',
         type=ranged_float_type,
         default=0,
-        help='Min. coverage/aligned fraction (0-1) [%(default)s]\n'
+        help='Min. query coverage/aligned fraction (0-1) [%(default)s]'
+    )
+    cluster_parser.add_argument(
+        '--rcov',
+        metavar='<float>',
+        dest='rcov',
+        type=ranged_float_type,
+        default=0,
+        help='Min. reference coverage/aligned fraction (0-1) [%(default)s]'
+    )
+    cluster_parser.add_argument(
+        '--len_ratio',
+        metavar='<float>',
+        dest='len_ratio',
+        type=ranged_float_type,
+        default=0,
+        help='Min. length ratio between shorter and longer sequence (0-1) '
+        '[%(default)s]'
     )
     cluster_parser.add_argument(
         '--num_alns',
@@ -458,7 +491,21 @@ def get_parser() -> argparse.ArgumentParser:
         metavar='<float>',
         type=ranged_float_type,
         default=0.7,
-        help='Resolution parameter for the Leiden algorithm [%(default)s]\n'
+        help='Resolution parameter for the Leiden algorithm [%(default)s]'
+    )
+    cluster_parser.add_argument(
+        '--leiden-beta',
+        metavar='<float>',
+        type=ranged_float_type,
+        default=0.01,
+        help='Beta parameter for the Leiden algorithm [%(default)s]'
+    )
+    cluster_parser.add_argument(
+        '--leiden-iterations',
+        metavar='<int>',
+        type=int,
+        default=2,
+        help='Number of iterations for the Leiden algorithm [%(default)s]'
     )
     cluster_parser.add_argument(
         '--bin',
@@ -609,11 +656,11 @@ def validate_args_cluster(args, parser) -> argparse.Namespace:
     # Check if the input TSV file has the required columns.
     with open(args.input_path) as fh:
         header = fh.readline().split()
-        if 'idx1' not in header and 'idx2' not in header:
+        if 'qidx' not in header and 'ridx' not in header:
             parser.error(
-                f'missing columns `idx1` and `idx2` in {args.input_path}')
-        options = ['tani', 'gani', 'ani', 'cov', 'num_alns']
-        for name in options:
+                f'missing columns `qidx` and `ridx` in {args.input_path}')
+        cols = ['tani', 'gani', 'ani', 'qcov', 'rcov', 'len_ratio', 'num_alns']
+        for name in cols:
             value = args_dict[name]
             if value != 0 and name not in header:
                 parser.error(f'missing column `{name}` in {args.input_path}')
@@ -845,10 +892,12 @@ def cmd_lzani(
         txt_path: pathlib.Path,
         output_path: pathlib.Path,
         out_format: typing.List[str],
+        out_aln_path: pathlib.Path,
         out_tani: float,
         out_gani: float,
         out_ani: float,
-        out_cov: float,
+        out_qcov: float,
+        out_rcov: float,
         filter_file: pathlib.Path,
         filter_threshold: float,
         mal: int,
@@ -874,14 +923,18 @@ def cmd_lzani(
             Path to the output ANI file.
         out_format (List[str]):
             List of LZ-ANI column names.
+        out_aln_path (Path):
+            Path to the output alignment file.
         out_tani (float):
             Minimum tANI to output.
         out_gani (float):
             Minimum gANI to output.
         out_ani (float):
             Minimum ANI to output.
-        out_cov (float):
-            Minimum coverage (aligned fraction) to output.
+        out_qcov (float):
+            Minimum query coverage (aligned fraction) to output.
+        out_rcov (float):
+            Minimum reference coverage (aligned fraction) to output.
         filter_file (Path):
             Path to the filter file (prefilter's output).
         filter_threshold (float):
@@ -944,10 +997,12 @@ def cmd_lzani(
     ]
     if filter_file:
         cmd.extend(['--flt-kmerdb', f'{filter_file}', f'{filter_threshold}'])
+    if out_aln_path:
+        cmd.extend(['--out-alignment', f'{out_aln_path}'])
 
     cols = [
-        ('tani', out_tani), ('gani', out_gani),
-        ('ani', out_ani), ('cov', out_cov)
+        ('tani', out_tani), ('gani', out_gani), ('ani', out_ani), 
+        ('qcov', out_qcov), ('rcov', out_rcov)
     ]
     for name, value in cols:
         if value > 0:
@@ -968,10 +1023,14 @@ def cmd_clusty(
         tani: float,
         gani: float,
         ani: float,
-        cov: float,
+        qcov: float,
+        rcov: float,
         num_alns: int,
+        len_ratio: float,
         is_representatives: bool,
         leiden_resolution: float,
+        leiden_beta: float,
+        leiden_iterations: int,
         bin_path=BIN_CLUSTY,
     ) -> typing.List[str]:
     """Constructs the command line for Clusty.
@@ -995,14 +1054,22 @@ def cmd_clusty(
             Minimum gANI.
         ani (float):
             Minimum ANI.
-        cov (float):
-            Minimum coverage (aligned fraction).
+        qcov (float):
+            Minimum query coverage (aligned fraction).
+        rcov (float):
+            Minimum reference coverage (aligned fraction).
         num_alns (int):
             Maximum number of local alignments between two genomes.
+        len_ratio (float):
+            Ratio between genome sequence lengths (shorter / longer)
         is_representatives (bool):
             Whether to output a representative genome for each cluster.
         leiden_resolution (float):
             Resolution parameter for the Leiden algorithm.
+        leiden_beta (float):
+            Beta parameter for the Leiden algorithm.
+        leiden_iterations (int):
+            Number of iterations for the Leiden algorithm.
         verbose (bool):
             Whether to display verbose output.
         bin_path (Path):
@@ -1019,13 +1086,14 @@ def cmd_clusty(
         '--algo',
         f'{algorithm}',
         f'--id-cols',
-        'idx1', 'idx2',
+        'qidx', 'ridx',
         '--distance-col',
         f'{metric}',
         '--similarity',
         '--numeric-ids',
     ]
-    cols = [('tani', tani), ('gani', gani), ('ani', ani), ('cov', cov)]
+    cols = [('tani', tani), ('gani', gani), ('ani', ani), ('qcov', qcov), 
+    ('rcov', rcov), ('len_ratio', len_ratio)]
     for name, value in cols:
         if value > 0:
             cmd.extend(['--min', f'{name}', f'{value}'])
@@ -1034,7 +1102,12 @@ def cmd_clusty(
     if is_representatives:
         cmd.append('--out-representatives')
     if algorithm == 'leiden':
-        cmd.extend(['--leiden-resolution', f'{leiden_resolution}'])
+        leiden_options = [
+            '--leiden-resolution', f'{leiden_resolution}',
+            '--leiden-beta', f'{leiden_beta}',
+            '--leiden-iterations', f'{leiden_iterations}',
+        ]
+        cmd.extend(leiden_options)
 
     cmd.extend([f'{input_path}', f'{output_path}'])
     return cmd
@@ -1128,7 +1201,7 @@ def main():
             db_paths.append(db_path)
 
             # Regardless of verbosity, always delete the partial FASTA file 
-            # after building the corresponding partial k-mer database.
+            # after building the corresponding partial Kmer-db database.
             if num_batches > 1:
                 batch[0].unlink()
 
@@ -1181,10 +1254,12 @@ def main():
             txt_path=txt_path,
             output_path=args.output_path,
             out_format=ALIGN_OUTFMT[args.outfmt],
+            out_aln_path=args.aln_path,
             out_tani=args.tani,
             out_gani=args.gani,
             out_ani=args.ani,
-            out_cov=args.cov,
+            out_qcov=args.qcov,
+            out_rcov=args.rcov,
             filter_file=args.filter_path,
             filter_threshold=args.filter_threshold,
             mal=args.mal,
@@ -1219,10 +1294,14 @@ def main():
             tani=args.tani,
             gani=args.gani,
             ani=args.ani,
-            cov=args.cov,
+            qcov=args.qcov,
+            rcov=args.rcov,
             num_alns=args.num_alns,
+            len_ratio=args.len_ratio,
             is_representatives=args.representatives,
             leiden_resolution=args.leiden_resolution,
+            leiden_beta=args.leiden_beta,
+            leiden_iterations=args.leiden_iterations,
             bin_path=args.BIN_CLUSTY,
         )
         p = run(cmd, args.verbose, logger)

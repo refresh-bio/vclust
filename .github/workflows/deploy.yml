@@ -1,0 +1,92 @@
+name: Deploy
+
+on:
+ release:
+    types:
+      - created
+      - updated
+
+jobs:
+
+
+ ########################################################################################
+  checkout:
+    name: Checkout
+    strategy:
+      matrix:
+        machine: [x64_linux, x64_mac, arm64_linux, arm64_mac]
+    runs-on: [self-hosted, vclust, '${{ matrix.machine }}']
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    - name: Get tags
+      run: | 
+        cd ./3rd_party/clusty/libs/igraph
+        git fetch --prune --unshallow
+        echo exit code $?
+        git tag --list
+      continue-on-error: true
+  
+########################################################################################
+  make:
+    name: Make
+    needs: checkout
+    strategy:
+      fail-fast: false
+      matrix:
+        machine: [x64_linux, arm64_linux]
+        leiden: [true]
+        include:
+        - machine: x64_mac
+          leiden: false
+        - machine: arm64_mac
+          leiden: false
+        
+    runs-on: [self-hosted, vclust, '${{ matrix.machine }}']  
+        
+    steps:
+    - name: make clean
+      run: make clean
+      continue-on-error: true
+    - name: make
+      run: make -j32 CXX=g++-12 STATIC_LINK=true LEIDEN=${{ matrix.leiden }}
+    - name: tar artifacts
+      run: tar -cvzf vclust.tar.gz vclust.py test.py LICENSE example bin
+
+      
+########################################################################################
+  help:
+    name: Print usage
+    needs: make
+    strategy:
+      fail-fast: false
+      matrix:
+        machine: [x64_linux, x64_mac, arm64_linux, arm64_mac]
+    runs-on: [self-hosted, vclust, '${{ matrix.machine }}']
+        
+    steps:
+    - name: help
+      run: python3 vclust.py
+
+########################################################################################
+  upload:
+    name: Upload
+    needs: help
+    strategy:
+      fail-fast: false
+      matrix:
+        machine: [x64_linux, x64_mac, arm64_linux, arm64_mac]
+    runs-on: [self-hosted, vclust, '${{ matrix.machine }}']
+    
+    steps:
+    - name: deploy
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: ./vclust.tar.gz
+        asset_name: vclust-${{ github.event.release.tag_name }}-${{matrix.machine}}.tar.gz
+        asset_content_type: application/gzip

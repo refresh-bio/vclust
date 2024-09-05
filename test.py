@@ -13,6 +13,7 @@ DATA_DIR = Path('example')
 FASTA_DIR = DATA_DIR / 'fna'
 FASTA_FILE = DATA_DIR / 'multifasta.fna'
 ANI_FILE = DATA_DIR / 'output'/ 'ani.tsv'
+ALN_FILE = DATA_DIR / 'output' / 'ani.aln.tsv'
 IDS_FILE = DATA_DIR / 'output' / 'ani.ids.tsv'
 FLTR_FILE = DATA_DIR / 'output' / 'fltr.txt'
 
@@ -170,7 +171,7 @@ def test_align_default(test_dir, input, params):
     ref_pairs = {
         ('NC_010807.ref', 'NC_010807.alt1'): 0.99753,
         ('NC_010807.ref', 'NC_010807.alt2'): 0.98985,
-        ('NC_010807.ref', 'NC_010807.alt3'): 0.98414,
+        ('NC_010807.ref', 'NC_010807.alt3'): 0.98384,
         ('NC_005091.ref', 'NC_005091.alt1'): 0.97161,
         ('NC_005091.ref', 'NC_005091.alt2'): 0.96707,
         ('NC_025457.ref', 'NC_025457.alt1'): 0.80607,
@@ -188,7 +189,7 @@ def test_align_default(test_dir, input, params):
             pairs[(id1, id2)] = tani
     for ref_pair, ref_tani in ref_pairs.items():
         tani = pairs[ref_pair]
-        assert abs(tani - ref_tani) < 0.03
+        assert abs(tani - ref_tani) < 0.007
     
 
 @pytest.mark.parametrize('outfmt,ref_cols',[
@@ -212,6 +213,35 @@ def test_align_outfmt(test_dir, outfmt, ref_cols):
     with open(out_file) as fh:
         cols = fh.readline().split()
         assert cols == ref_cols
+
+
+@pytest.mark.parametrize('input,params',[
+    (FASTA_DIR, []),
+    (FASTA_FILE, []),
+])
+def test_align_alignments(test_dir, input, params):
+    out_file = test_dir.joinpath('ani.tsv')
+    out_aln_file = test_dir.joinpath('ani.aln.tsv')
+    cmd = [
+        f'{VCLUST.resolve()}',
+        'align',
+        '-i',
+        f'{input}',
+        '-o',
+        f'{out_file}',
+        '--out-aln',
+        f'{out_aln_file}',
+
+    ]
+    p = subprocess.run(cmd)
+    assert p.returncode == 0
+    assert p.stderr == None
+    assert out_aln_file.exists()
+    assert out_aln_file.stat().st_size
+    with open(out_aln_file) as fh:
+        header = fh.readline().split()
+        assert len(header) == 10
+        assert fh.readlines()
 
 
 @pytest.mark.parametrize('input,params',[
@@ -288,7 +318,12 @@ def test_cluster_algorithm(test_dir, algorithm):
     assert out_file.stat().st_size
 
 
-def test_cluster_algorithm_leiden(test_dir):
+@pytest.mark.parametrize('params',[
+    ([]),
+    (['--leiden-resolution', '0.8', '--leiden-iterations', '3']),
+    (['--leiden-resolution', '0.8', '--leiden-beta', '0.001']),
+])
+def test_cluster_algorithm_leiden(test_dir, params):
     out_file = test_dir / 'clusters.tsv'
     cmd = [
         f'{VCLUST.resolve()}',
@@ -306,6 +341,7 @@ def test_cluster_algorithm_leiden(test_dir):
         '--tani',
         '0.95',
     ]
+    cmd.extend(params)
     p = subprocess.run(cmd, 
         stdout=subprocess.DEVNULL, 
         stderr=subprocess.DEVNULL)
