@@ -1,13 +1,13 @@
-name: Deploy
+name: Self-hosted CI
 
 on:
- release:
-    types:
-      - created
-      - updated
+  pull_request:
+    branches: [ master, develop ]
+    paths-ignore:
+      - '**.md'
+  workflow_dispatch:
 
 jobs:
-
 
  ########################################################################################
   checkout:
@@ -28,7 +28,7 @@ jobs:
         echo exit code $?
         git tag --list
       continue-on-error: true
-  
+
 ########################################################################################
   make:
     name: Make
@@ -46,53 +46,26 @@ jobs:
         - {machine: arm64_mac, platform: m1, compiler: g++-13, leiden: false}
         
     runs-on: [self-hosted, vclust, '${{ matrix.machine }}'] 
-    env:
-      DIR: vclust-${{ github.event.release.tag_name }}-${{matrix.machine}}
-        
+
     steps:
     - name: make clean
       run: make clean
       continue-on-error: true
     - name: make
       run: make -j32 CXX=${{matrix.compiler}} STATIC_LINK=true PLATFORM=${{ matrix.platform }} LEIDEN=${{ matrix.leiden }}
-    - name: tar artifacts
-      run: | 
-        mkdir ${DIR}
-        cp -r vclust.py test.py LICENSE example bin ${DIR}
-        tar -cvzf vclust.tar.gz ${DIR}
 
-      
 ########################################################################################
-  help:
-    name: Print usage
+  pipeline:
+    name: Pipeline
     needs: make
     strategy:
       fail-fast: false
       matrix:
-        machine: [x64_linux, x64_mac, arm64_linux, arm64_mac]
-    runs-on: [self-hosted, vclust, '${{ matrix.machine }}']
-        
-    steps:
-    - name: help
-      run: python3 vclust.py
-
-########################################################################################
-  upload:
-    name: Upload
-    needs: help
-    strategy:
-      fail-fast: false
-      matrix:
-        machine: [x64_linux, x64_mac, arm64_linux, arm64_mac]
+        machine: [x64_linux, arm64_linux]
     runs-on: [self-hosted, vclust, '${{ matrix.machine }}']
     
     steps:
-    - name: deploy
-      uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: ./vclust.tar.gz
-        asset_name: vclust-${{ github.event.release.tag_name }}-${{matrix.machine}}.tar.gz
-        asset_content_type: application/gzip
+    
+    - name: run pipeline
+      run: |
+        pytest test.py
