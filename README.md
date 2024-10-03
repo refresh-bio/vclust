@@ -1,6 +1,6 @@
 # <img src="./images/logo.svg" alt="Vclust logo" /> Vclust
 
-![version](https://img.shields.io/badge/version-1.1.0-blue.svg)
+![version](https://img.shields.io/badge/version-1.2.0-blue.svg)
 [![GitHub downloads](https://img.shields.io/github/downloads/refresh-bio/vclust/total.svg?style=flag&label=GitHub%20downloads)](https://github.com/refresh-bio/vclust/releases)
 [![GitHub Actions CI](../../workflows/GitHub%20Actions%20CI/badge.svg)](../../actions/workflows/main.yml)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
@@ -26,15 +26,16 @@ Vclust is an alignment-based tool for fast and accurate calculation of Average N
    2. [Align](#62-align)
    3. [Cluster](#63-cluster)
 7. [Use cases](#7-use-cases)
-   1. [Classify viruses into species and genera using the ICTV standards](#71-classify-viruses-into-species-and-genera-using-the-ictv-standards)
-   2. [Assign viral contigs into vOTUs using the MIUViG standards](#72-assign-viral-contigs-into-votus-using-the-miuvig-standards)
-   3. [Dereplicate genomes](#73-dereplicate-genomes)
+   1. [Classify viruses into species and genera following ICTV standards](#71-classify-viruses-into-species-and-genera-following-ictv-standards)
+   2. [Assign viral contigs into vOTUs following MIUViG standards](#72-assign-viral-contigs-into-votus-following-miuvig-standards)
+   3. [Dereplicate viral contigs into representative genomes](#73-dereplicate-viral-contigs-into-representative-genomes)
    4. [Calculate pairwise similarities between all-versus-all genomes](#74-calculate-pairwise-similarities-between-all-versus-all-genomes)
-   5. [Process large datasets](#75-process-large-datasets)
-8. [Limitations](#8-limitations)
-9. [Tests](#9-test)
-10. [Citation](#10-citation)
-11. [License](#11-license)
+   5. [Process large dataset of diverse virus genomes (IMG/VR)](#75-process-large-dataset-of-diverse-virus-genomes-imgvr)
+   6. [Process large dataset of redundant and highly similar virus genomes](#76-process-large-dataset-of-redundant-and-highly-similar-virus-genomes)
+   7. [Cluster plasmid genomes into pOTUs](#77-cluster-plasmid-genomes-into-potus)
+8. [Tests](#8-tests)
+9. [Citation](#9-citation)
+10. [License](#10-license)
 
 
 ## 1. Features
@@ -162,32 +163,65 @@ Vclust provides three commands: `prefilter`, `align`, and `cluster`. Calls to th
 
 ### 6.1. Prefilter
 
-The `prefilter` command creates a pre-alignment filter, which eliminates dissimilar genome pairs before calculating pairwise alignments. This process reduces the number of potential genome pairs to only those with sufficient *k*-mer-based sequence similarity. The *k*-mer-based sequence similarity between two genomes is controlled by two options: minimum number of common *k*-mers (`--min-kmers`) and minimum sequence identity of the shorter sequence (`--min-ident`). Both *k*-mer-based similarities are computed using [Kmer-db 2](https://github.com/refresh-bio/kmer-db) which evaluates the entire set of *k*-mers, overcoming the sampling constraints typical of sketching methods like FastANI and Mash. In addittion, the use of sparse distance matrices enables memory-efficient processing of millions of genomes.
+The `prefilter` command creates a pre-alignment filter that reduces the number of genome pairs to be aligned by filtering out dissimilar sequences before the alignment step. This process siginificantly lowers the computational demands by keeping only genome pairs with sufficient *k*-mer-based sequence similarity.
 
-By default, the `prefilter` command creates a pre-alignment filter with genome pairs that have at least 30 common 25-mers and 70% of identity over the shorter sequence.
+Two main options control the prefiltering process:
+
+* `--min-kmers`: Minimum number of common k-mers required between two sequences (default: 30).
+* `--min-ident`: Minimum sequence identity, calculated over the shorter sequence [0-1] (default: 0.7).
+
+Vclust computes these similarities using the entire set of *k*-mers with [Kmer-db 2](https://github.com/refresh-bio/kmer-db), overcoming the sampling limitations of sketching methods like FastANI and Mash. It also uses sparse distance matrices to efficiently process large datasets.
+
+By default, the `prefilter` command selects genome pairs with at least 30 common 25-mers and 70% identity over the shorter sequence:
 
 ```bash
+# Create pre-alignment filter with 30 common 25-mers
+# and 70% identity over the shorter sequence.
 ./vclust.py prefilter -i genomes.fna -o fltr.txt 
 ```
 
-The sequence identity calculated in the prefilter step is **higher** than ANI value from the alignment step. This means you can safely set the `--min-ident` parameter to a value close to the final ANI threshold without losing relevant genome pairs during the prefiltering process. For example, if your goal is to identify genome pairs with an ANI threshold of 95% or higher, you can set `--min-ident` to approximately 0.95.
+The sequence identity computed during prefiltering is **higher** than the ANI value from the alignment step. Thus, you can safely set the `--min-ident` value close to the final ANI threshold without losing relevant genome pairs. For example, if you're targeting an ANI threshold of 95% or higher, set `--min-ident` to around 0.95:
 
 ```bash
-# Create a pre-alignment filter with genome sequence pairs that have
-# at least 30 25-mers in common and 95% of identity over the shorter sequence.
-./vclust.py prefilter -i genomes.fna -o fltr.txt --k 25 --min-kmers 30 --min-ident 0.90 
+# Filter genome pairs with at least 30 common 21-mers and 90% identity
+./vclust.py prefilter -i genomes.fna -o fltr.txt --k 21 --min-kmers 30 --min-ident 0.90 
 ```
 
-To reduce memory consumption, large sets of genome sequences can be processed in smaller, equally-sized, batches of sequences.
+#### 6.1.1. Optimizing RAM usage and speed
+
+To reduce memory consumption or improve processing speed, you can use the following three methods, either individually or in combination:
+
+##### 1. Process genomes in smaller batches
+
+Vclust can lower memory usage by processing the genome dataset in smaller, equally-sized batches. While this approach may slightly increase runtime, it significantly reduces memory consumption:
 
 ```bash
-# Process genomes in batches of 5 million sequences each.
+# Process genomes in batches of 5 million sequences.
 ./vclust.py prefilter -i genomes.fna -o fltr.txt --batch-size 5000000
 ```
 
+##### 2. Analyze only a fraction of *k*-mers
+
+To speed up filtering, Vclust can analyze only a fraction of the *k*-mers for each genome. The `--kmers-fraction` option controls the proportion [0-1] of *k*-mers used in comparisons:
+
+```bash
+# Process genomes in batches and analyze 10% of k-mers in each genome sequence.
+./vclust.py prefilter -i genomes.fna -o fltr.txt --batch-size 5000000 --kmers-fraction 0.1
+```
+
+##### 3. Limit the number of target sequences per query
+
+For highly redundant datasets (e.g., hundreds of thousands of nearly identical genomes), the `prefilter` step may still pass a large number of genome pairs, increasing both memory usage and runtime. The `--max-seqs` option limits the number of target sequences reported for each query genome, reducing the overall number of genome pairs passed to alignment. For each query, `--max-seqs` returns up to *n* sequences that have passed the `--min-kmers` and `--min-ident` filters, and have the highest sequence identity to query sequence. For example, in a dataset containing 1 million nearly identical genomes, the total number of possible genome pairs is almost 500 billion. Setting `--max-seqs 1000` reduces this to 1 billion genome pairs, significantly decreasing memory usage and runtime.
+
+```bash
+# Limit the number of target sequences to 1000 per query genome.
+./vclust.py prefilter -i genomes.fna -o fltr.txt --batch-size 100000 --max-seqs 1000
+```
+
+
 ### 6.2. Align
 
-The `align` command performs pairwise sequence alignments among viral genomes and provides similarity measures like ANI and coverage (alignment fraction). It uses the [LZ-ANI](https://github.com/refresh-bio/LZ-ANI) aligner, which, like BLAST-based methods, finds multiple local alignments (similar to HSPs in BLAST) between two genomic sequences to estimate ANI and other sequence similarity measures for that genome pair.
+The `align` command performs pairwise sequence alignments of viral genomes and provides similarity measures like ANI and coverage (alignment fraction). It uses the [LZ-ANI](https://github.com/refresh-bio/LZ-ANI) aligner, which, like BLAST-based methods, finds multiple local alignments (similar to HSPs in BLAST) between two genomic sequences to estimate ANI and other sequence similarity measures for that genome pair.
 
 ```bash
 # Align genome pairs filtered by the prefiltering command.
@@ -418,7 +452,7 @@ NC_010807.ref	NC_010807.alt2
 
 ## 7. Use cases
 
-### 7.1. Classify viruses into species and genera using the ICTV standards
+### 7.1. Classify viruses into species and genera following ICTV standards
 
 The following commands perform VIRIDIC-like analysis by calculating the total ANI (tANI) between complete virus genomes and classifying these viruses into species and genera based on 95% and 70% tANI, respectively.
 
@@ -443,7 +477,7 @@ The following commands perform VIRIDIC-like analysis by calculating the total AN
 --metric tani --tani 0.70
 ```
 
-### 7.2. Assign viral contigs into vOTUs using the MIUViG standards
+### 7.2. Assign viral contigs into vOTUs following MIUViG standards
 
 The following commands assign contigs into viral operational taxonomic units (vOTUs) based on the MIUViG thresholds (ANI ≥ 95% and aligned fraction ≥ 85%).
 
@@ -463,7 +497,7 @@ The following commands assign contigs into viral operational taxonomic units (vO
 --metric ani --ani 0.95 --qcov 0.85
 ```
 
-### 7.3. Dereplicate genomes
+### 7.3. Dereplicate viral contigs into representative genomes
 
 The following commands reduce the sequence dataset to representative genomes.
 
@@ -491,9 +525,9 @@ The following command calculates ANI measures between all genome pairs in the da
 ./vclust.py align -i genomes.fna -o ani.tsv
 ```
 
-### 7.5. Process large datasets of virus genomes
+### 7.5. Process large dataset of diverse virus genomes (IMG/VR)
 
-The following commands help reduce RAM usage and hard disk storage by using prefilter on smaller, equally-sized batches of sequences. The example shows processing over 15 million metagenomic contigs from the [IMG/VR](https://genome.jgi.doe.gov/portal/IMG_VR/IMG_VR.home.html) database.
+Vclust is optimized for efficient comparison of large viral genome and contig datasets, especially those containing diverse viruses across a broad range of sequence identities. Below is an example of processing over 15 million metagenomic contigs from the [IMG/VR](https://genome.jgi.doe.gov/portal/IMG_VR/IMG_VR.home.html) database.
 
 ```bash
 # Create a pre-alignment filter by processing batches of 5 million genomes.
@@ -502,27 +536,73 @@ The following commands help reduce RAM usage and hard disk storage by using pref
 ```
 
 ```bash
-# Calculate ANI measures for genome pairs specified in the filter. Keep the output TSV
-# file relatively small-sized: use the lite output format and report only genome pairs 
-# with ANI ≥ 95% and query coverage ≥ 85%.
+# Calculate ANI values for genome pairs specified in the filter. To keep the output
+# file compact, use the `lite` format and only report genome pairs with ANI ≥ 95%
+# and query coverage ≥ 85%.
 ./vclust.py align -i genomes -o ani.tsv --filter fltr.txt --outfmt lite \ 
---out-ani 0.95 --out-cov 0.85
+--out-ani 0.95 --out-qcov 0.85
 ```
 
 ```bash
-# Cluster contigs into vOTUs using the MIUVIG thresholds and the Leiden algorithm.
+# Cluster contigs into vOTUs using the MIUVIG standards and the Leiden algorithm.
 ./vclust.py cluster -i ani.tsv -o clusters.tsv --ids ani.ids.tsv --algorithm leiden \
 --metric ani --ani 0.95 --qcov 0.85
 ```
 
-> [!NOTE]
-> Please see: 8. Limitations
+### 7.6. Process large dataset of redundant and highly similar virus genomes
 
-## 8. Limitations
+When working with large datasets containing highly redundant sequences (e.g., hundreds of thousands of nearly identical genomes), prefiltering may still pass a large number of genome pairs for alignment, even when using high thresholds for `--min-kmers` and `--min-ident`. Since most sequences in these datasets are almost identical, this can lead to increased memory usage and longer runtimes for all three Vclust commands (`prefilter`, `align`, `cluster`).
 
-Vclust is efficient for comparing genome sequences of diverse viruses across a wide range of sequence identities. However, RAM usage and running time may increase drastically in large datasets of highly similar or nearly identical genomes (e.g., hundreds of thousands from the same species).
+To address this, Vclust offers three additional options in the prefilter step to reduce RAM usage and improve performance (as detailed in: [6.1.1. Optimizing RAM usage and speed](#611-optimizing-ram-usage-and-speed)). In summary:
 
-## 9. Test
+1. **Batch processing**: Processing genomes in smaller batches reduces RAM usage, with a slight increase in runtime.
+2. **Partial k-mer analysis**: Analyzing a fraction of *k*-mers (instead of the full set) significantly improves runtime and slightly reduces RAM usage.
+3. **Limiting target sequences**: Limiting the number of target sequences per query genome significantly improves both RAM usage and runtime.
+
+The example below shows the use of all three options simultaneously:
+
+```bash
+# Create a pre-alignment filter by processing batches of 100,000 genomes,
+# analyzing only 10% of k-mers, and limiting each query genome to 1,000
+# target sequences with the highest sequence identity.
+./vclust.py prefilter -i genomes.fna -o fltr.txt --min-kmers 30 --min-ident 0.95 \
+--batch-size 100000 --kmers-fraction 0.1 --max-seqs 1000
+```
+
+```bash
+# Calculate ANI values for genome pairs specified in the filter. To keep the output
+# file compact, use the `lite` format and only report genome pairs with ANI ≥ 95%
+# and query coverage ≥ 95%.
+./vclust.py align -i genomes -o ani.tsv --filter fltr.txt --outfmt lite \ 
+--out-ani 0.95 --out-qcov 0.95
+```
+
+```bash
+# Cluster highly similar contigs using the Leiden algorithm.
+./vclust.py cluster -i ani.tsv -o clusters.tsv --ids ani.ids.tsv --algorithm leiden \
+--metric ani --ani 0.97 --qcov 0.95
+```
+
+### 7.7. Cluster plasmid genomes into pOTUs
+
+Vclust can process non-viral short genomes like plasmids.
+
+```bash
+# Create a pre-alignment filter
+./vclust.py prefilter -i genomes.fna -o fltr.txt --min-kmers 30 --min-ident 0.30
+```
+
+```bash
+./vclust.py align -i genomes -o ani.tsv --filter fltr.txt --out-ani 0.70 --out-qcov 0.50
+```
+
+```bash
+./vclust.py cluster -i ani.tsv -o clusters.tsv --ids ani.ids.tsv --algorithm leiden \
+--metric gani --gani 0.35 --leiden-resolution 0.9
+```
+
+
+## 8. Tests
 
 To ensure that Vclust works as expected, you can run tests using [pytest](https://docs.pytest.org/).
 
@@ -530,10 +610,10 @@ To ensure that Vclust works as expected, you can run tests using [pytest](https:
 pytest test.py
 ```
 
-## 10. Citation
+## 9. Citation
 
 Zielezinski A, Gudyś A, Barylski J, Siminski K, Rozwalak P, Dutilh BE, Deorowicz S. *Ultrafast and accurate sequence alignment and clustering of viral genomes*. bioRxiv [[doi:10.1101/2024.06.27.601020](https://www.biorxiv.org/content/10.1101/2024.06.27.601020)].
 
-## 11. License
+## 10. License
 
 [GNU General Public License, version 3](https://www.gnu.org/licenses/gpl-3.0.html)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Compute Average Nucleotide Identity (ANI) and cluster virus genome sequences.
 
-https://github.com/refresh-bio/vclust-dev
+https://github.com/refresh-bio/vclust
 """
 
 import argparse
@@ -15,7 +15,7 @@ import sys
 import typing
 import uuid
 
-__version__ = '1.1.1'
+__version__ = '1.2.0'
 
 DEFAULT_THREAD_COUNT = min(multiprocessing.cpu_count(), 64)
 
@@ -134,9 +134,29 @@ def get_parser() -> argparse.ArgumentParser:
         metavar="<int>",
         type=int,
         default=0,
-        help='Split a multifasta file into smaller files of n FASTA sequences. '
+        help='Process a multifasta file in smaller batches of n FASTA sequences. '
         'This option reduces memory at the expense of speed. By default, no '
         'batch [%(default)s]'
+    )
+    prefilter_parser.add_argument(
+        '--kmers-fraction',
+        metavar="<float>",
+        type=ranged_float_type,
+        default=1.0,
+        help='Fraction of k-mers to analyze for each genome (0-1). A lower '
+        'value reduces RAM usage and speeds up processing (affects sensitivity) '
+        '[%(default)s]'
+    )
+    prefilter_parser.add_argument(
+        '--max-seqs',
+        metavar="<int>",
+        type=int,
+        default=0,
+        help='Maximum number of sequences allowed to pass the prefilter per '
+        'query. Only the sequences with the highest identity to the query are '
+        'reported. This option reduces RAM usage and speeds up processing '
+        '(affects sensitivity). By default, all sequences that pass the '
+        'prefilter are reported [%(default)s]'
     )
     prefilter_parser.add_argument(
         '--keep_temp',
@@ -602,7 +622,7 @@ def validate_binary(bin_path: pathlib.Path) -> pathlib.Path:
         exit(f'error: Binary file not executable: {bin_path}')
     
     try:
-        process = subprocess.run(
+        subprocess.run(
             [str(bin_path)],  
             stdout=subprocess.DEVNULL, 
             stderr=subprocess.PIPE,
@@ -731,8 +751,6 @@ def cmd_fastasplit(
             Path to the output directory.
         n (int):
             Number of sequences per output FASTA file.
-        verbose (bool):
-            Whether to display verbose output.
         bin_path (Path):
             Path to the multi-fasta-split executable.
         
@@ -758,8 +776,8 @@ def cmd_kmerdb_build(
         db_path: pathlib.Path,
         is_multisample_fasta: bool,
         kmer_size: int,
+        kmers_fraction: float,
         num_threads: int,
-        verbose: bool = False,
         bin_path: pathlib.Path = BIN_KMERDB
     ) -> typing.List[str]:
     """Constructs the command line for Kmer-db build.
@@ -773,10 +791,10 @@ def cmd_kmerdb_build(
             Path to the output kmer-db database file.
         kmer_size (int):
             k-mer size.
+        kmers_fraction (float):
+            Fraction of k-mers to analyze for each genome (0-1).
         num_threads (int):
             Number of threads to use in kmer-db.
-        verbose (bool):
-            Whether to display verbose output.
         bin_path (Path):
             Path to the kmer-db executable.
 
@@ -793,7 +811,8 @@ def cmd_kmerdb_build(
     cmd = [
         f"{bin_path}", 
         "build",
-        "-k", f"{kmer_size}",    
+        "-k", f"{kmer_size}",
+        "-f", f"{kmers_fraction}",
         "-t", f"{num_threads}",
         f'{txt_path}',
         f'{db_path}',
@@ -807,9 +826,10 @@ def cmd_kmerdb_all2all(
         db_paths: typing.List[pathlib.Path],
         db_list_path: pathlib.Path,
         outfile_all2all: pathlib.Path,
-        kmer_count: int,
+        min_kmers: int,
+        min_ident: float,
+        max_seqs: int,
         num_threads: int,
-        verbose: bool,
         bin_path: pathlib.Path = BIN_KMERDB
     ) -> typing.List[str]:
     """Constructs the command line for Kmer-db all2all.
@@ -821,12 +841,14 @@ def cmd_kmerdb_all2all(
             Path to the output text file listing the kmer-db database files.
         outfile_all2all (Path):
             Path to the output all2all file.
-        kmer_count (int):
+        min_kmers (int):
             Minimum number of shared k-mers to report in all2all output.
+        min_ident (float):
+            Minimum sequence identity of the shorter sequence.
+        max_seqs (int):
+            Maximum number of sequences allowed to pass the prefilter per query.
         num_threads (int):
             Number of threads to use in kmer-db.
-        verbose (bool):
-            Whether to display verbose output.
         bin_path (Path):
             Path to the kmer-db executable.
         
@@ -842,19 +864,22 @@ def cmd_kmerdb_all2all(
         f"{bin_path}", 
         'all2all-parts' if len(db_paths) > 1 else 'all2all-sp',
         '-sparse',
-        '-above', f'{kmer_count}', 
+        '-min', f'num-kmers:{min_kmers}',
+        '-min', f'ani-shorter:{min_ident}',
         "-t", f"{num_threads}",
         f'{db_list_path}' if len(db_paths) > 1 else f'{db_paths[0]}',
         f'{outfile_all2all}',
     ]
+    if max_seqs > 0:
+        cmd[5:5] = ['-sample-rows', f'ani-shorter:{max_seqs}']
     return cmd
 
 
 def cmd_kmerdb_distance(
         infile_all2all: pathlib.Path,
-        min_value: float,
+        outfile_distance: pathlib.Path,
+        min_ident: float,
         num_threads: int,
-        verbose: bool = False,
         bin_path: pathlib.Path = BIN_KMERDB
     ) -> typing.List[str]:
     """Constructs the command line for Kmer-db distance.
@@ -862,12 +887,12 @@ def cmd_kmerdb_distance(
     Args:
         infile_all2all (Path):
             Path to the input all2all file.
-        min_value (float):
-            Minimum value to filter all2all output.
+        outfile_distance (Path):
+            Path to the output distance (file) file.
+        min_ident (float):
+            Minimum sequence identity to report in output.
         num_threads (int):
             Number of threads to use in kmer-db.
-        verbose (bool):
-            Whether to display verbose output.
         bin_path (Path):
             Path to the kmer-db executable.
 
@@ -880,9 +905,10 @@ def cmd_kmerdb_distance(
         "distance",
         "ani-shorter",
         "-sparse",
-        '-above', f'{min_value}',
+        '-min', f'{min_ident}',
         "-t", f"{num_threads}",
         f'{infile_all2all}',
+        f'{outfile_distance}',
     ]
     return cmd
 
@@ -1070,8 +1096,6 @@ def cmd_clusty(
             Beta parameter for the Leiden algorithm.
         leiden_iterations (int):
             Number of iterations for the Leiden algorithm.
-        verbose (bool):
-            Whether to display verbose output.
         bin_path (Path):
             Path to the clusty executable.
 
@@ -1193,8 +1217,8 @@ def main():
                 db_path=db_path,
                 is_multisample_fasta=args.is_multifasta,
                 kmer_size=args.k,
+                kmers_fraction=args.kmers_fraction,
                 num_threads=args.num_threads,
-                verbose=args.verbose,
                 bin_path=args.bin_kmerdb,
             )
             p = run(cmd, args.verbose, logger)
@@ -1213,24 +1237,22 @@ def main():
             db_paths=db_paths,
             db_list_path=db_list_path,
             outfile_all2all=all2all_path,
-            kmer_count=args.min_kmers,
+            min_kmers=args.min_kmers,
+            min_ident=args.min_ident,
+            max_seqs=args.max_seqs,
             num_threads=args.num_threads,
-            verbose=args.verbose,
             bin_path=args.bin_kmerdb,
         )
         p = run(cmd, args.verbose, logger)
 
         cmd = cmd_kmerdb_distance(
             infile_all2all=all2all_path,
-            min_value=args.min_ident,
+            outfile_distance=args.output_path,
+            min_ident=args.min_ident,
             num_threads=args.num_threads,
-            verbose=args.verbose,
             bin_path=args.bin_kmerdb,
         )
         p = run(cmd, args.verbose, logger)
-
-        out_ani = out_dir / 'all2all.txt.ani-shorter'
-        out_ani.rename(args.output_path)
 
         if not args.keep_temp:
             if out_dir.exists():

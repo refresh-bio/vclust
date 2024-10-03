@@ -52,6 +52,7 @@ def test_subcommands(subcommand):
 @pytest.mark.parametrize('input,params,error_msg',[
     (FASTA_DIR, ['--batch-size', '4'], 'error: --batch-size'),
     (FASTA_DIR, ['--min-ident', '95'], 'between 0 and 1'),
+    (FASTA_DIR, ['--kmers-fraction', '10'], 'between 0 and 1'),
     (FASTA_DIR, ['--k', '2'], 'invalid choice'),
 ])
 def test_parser_error_prefilter(test_dir, input, params, error_msg):
@@ -127,6 +128,8 @@ def test_parser_error_cluster(test_dir, params, error_msg):
     (FASTA_DIR, []),
     (FASTA_FILE, []),
     (FASTA_FILE, ['--batch-size', '4']),
+    (FASTA_FILE, ['--kmers-fraction', '0.5']),
+    (FASTA_FILE, ['--max-seqs', '3']),
 ])
 def test_prefilter_default(test_dir, input, params):
     out_file = test_dir.joinpath('filter.txt')
@@ -308,6 +311,42 @@ def test_cluster_algorithm(test_dir, algorithm):
         'tani',
         '--tani',
         '0.95',
+    ]
+    p = subprocess.run(cmd, 
+        stdout=subprocess.DEVNULL, 
+        stderr=subprocess.DEVNULL)
+    assert p.returncode == 0
+    assert p.stderr == None
+    assert out_file.exists()
+    assert out_file.stat().st_size
+
+
+@pytest.mark.parametrize('filtering_measure',[
+    'tani',
+    'gani',
+    'ani',
+    'qcov',
+    'rcov',
+])
+def test_cluster_filtering(test_dir, filtering_measure):
+    out_file = test_dir / 'clusters.tsv'
+    cmd = [
+        f'{VCLUST.resolve()}',
+        'cluster',
+        '-i',
+        f'{ANI_FILE}',
+        '--ids',
+        f'{IDS_FILE}',
+        '-o',
+        f'{out_file}',
+        '--algorithm',
+        'single',
+        '--metric',
+        'tani',
+        '--tani',
+        '0.95',
+        f'--{filtering_measure}',
+        '0.85',
     ]
     p = subprocess.run(cmd, 
         stdout=subprocess.DEVNULL, 
