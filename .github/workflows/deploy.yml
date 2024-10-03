@@ -18,6 +18,8 @@ jobs:
     runs-on: [self-hosted, vclust, '${{ matrix.machine }}']
     
     steps:
+    - name: clean
+      run: rm -rf ${{ github.workspace }}/*
     - uses: actions/checkout@v4
       with:
         submodules: recursive
@@ -38,30 +40,26 @@ jobs:
       matrix:
         machine: [x64_linux]
         platform: [avx2]
-        compiler: [g++-13]
+        compiler: [14]
         leiden: [true]
         include:
-        - {machine: arm64_linux, platform: arm8, compiler: g++-12, leiden: true}
-        - {machine: x64_mac, platform: avx2, compiler: g++-13, leiden: false}
-        - {machine: arm64_mac, platform: m1, compiler: g++-13, leiden: false}
+        - {machine: arm64_linux, platform: arm8, compiler: 12, leiden: true}
+        - {machine: x64_mac, platform: avx2, compiler: 12, leiden: false}
+        - {machine: arm64_mac, platform: m1, compiler: 13, leiden: false}
         
     runs-on: [self-hosted, vclust, '${{ matrix.machine }}'] 
     env:
       DIR: vclust-${{ github.event.release.tag_name }}-${{matrix.machine}}
         
     steps:
-    - name: make clean
-      run: make clean
-      continue-on-error: true
     - name: make
-      run: make -j32 CXX=${{matrix.compiler}} STATIC_LINK=true PLATFORM=${{ matrix.platform }} LEIDEN=${{ matrix.leiden }}
+      run: make -j32 CXX=g++-${{matrix.compiler}} CC=gcc-${{matrix.compiler}} STATIC_LINK=true PLATFORM=${{ matrix.platform }} LEIDEN=${{ matrix.leiden }}
     - name: tar artifacts
       run: | 
         mkdir ${DIR}
         cp -r vclust.py test.py LICENSE example bin ${DIR}
         tar -cvzf vclust.tar.gz ${DIR}
-
-      
+   
 ########################################################################################
   help:
     name: Print usage
