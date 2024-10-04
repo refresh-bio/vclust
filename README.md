@@ -1,6 +1,6 @@
 # <img src="./images/logo.svg" alt="Vclust logo" /> Vclust
 
-![version](https://img.shields.io/badge/version-1.2.1-blue.svg)
+![version](https://img.shields.io/badge/version-1.2.2-blue.svg)
 [![GitHub downloads](https://img.shields.io/github/downloads/refresh-bio/vclust/total.svg?style=flag&label=GitHub%20downloads)](https://github.com/refresh-bio/vclust/releases)
 [![GitHub Actions CI](../../workflows/GitHub%20Actions%20CI/badge.svg)](../../actions/workflows/main.yml)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
@@ -31,11 +31,12 @@ Vclust is an alignment-based tool for fast and accurate calculation of Average N
    3. [Dereplicate viral contigs into representative genomes](#73-dereplicate-viral-contigs-into-representative-genomes)
    4. [Calculate pairwise similarities between all-versus-all genomes](#74-calculate-pairwise-similarities-between-all-versus-all-genomes)
    5. [Process large dataset of diverse virus genomes (IMG/VR)](#75-process-large-dataset-of-diverse-virus-genomes-imgvr)
-   6. [Process large dataset of redundant and highly similar virus genomes](#76-process-large-dataset-of-redundant-and-highly-similar-virus-genomes)
+   6. [Process large dataset of highly redundant virus genomes](#76-process-large-dataset-of-highly-redundant-virus-genomes)
    7. [Cluster plasmid genomes into pOTUs](#77-cluster-plasmid-genomes-into-potus)
-8. [Tests](#8-tests)
-9. [Citation](#9-citation)
-10. [License](#10-license)
+8. [FAQ](#8-faq)
+9. [Tests](#9-tests)
+10. [Citation](#10-citation)
+11. [License](#11-license)
 
 
 ## 1. Features
@@ -549,17 +550,9 @@ Vclust is optimized for efficient comparison of large viral genome and contig da
 --metric ani --ani 0.95 --qcov 0.85
 ```
 
-### 7.6. Process large dataset of redundant and highly similar virus genomes
+### 7.6. Process large dataset of highly redundant virus genomes
 
-When working with large datasets containing highly redundant sequences (e.g., hundreds of thousands of nearly identical genomes), prefiltering may still pass a large number of genome pairs for alignment, even when using high thresholds for `--min-kmers` and `--min-ident`. Since most sequences in these datasets are almost identical, this can lead to increased memory usage and longer runtimes for all three Vclust commands (`prefilter`, `align`, `cluster`).
-
-To address this, Vclust offers three additional options in the prefilter step to reduce RAM usage and improve performance (as detailed in: [6.1.1. Optimizing RAM usage and speed](#611-optimizing-ram-usage-and-speed)). In summary:
-
-1. **Batch processing**: Processing genomes in smaller batches reduces RAM usage, with a slight increase in runtime.
-2. **Partial k-mer analysis**: Analyzing a fraction of *k*-mers (instead of the full set) significantly improves runtime and slightly reduces RAM usage.
-3. **Limiting target sequences**: Limiting the number of target sequences per query genome significantly improves both RAM usage and runtime.
-
-The example below shows the use of all three options simultaneously:
+When working with large datasets containing highly redundant sequences (e.g., hundreds of thousands of nearly identical genomes), prefiltering may still pass a large number of genome pairs for alignment, even when using high thresholds for `--min-kmers` and `--min-ident`. Since most sequences in these datasets are almost identical, this can lead to increased memory usage and longer runtimes for all three Vclust commands (`prefilter`, `align`, `cluster`). To address this, Vclust offers three additional options in the `prefilter` step to reduce RAM usage and improve performance (as detailed in: [6.1.1. Optimizing RAM usage and speed](#611-optimizing-ram-usage-and-speed)). The example below shows the use of all three options simultaneously:
 
 ```bash
 # Create a pre-alignment filter by processing batches of 100,000 genomes,
@@ -585,24 +578,47 @@ The example below shows the use of all three options simultaneously:
 
 ### 7.7. Cluster plasmid genomes into pOTUs
 
-Vclust can process non-viral short genomes like plasmids.
+The following commands cluster plasmid genomes into plasmid taxonomic units (PTUs).
 
 ```bash
-# Create a pre-alignment filter
+# Create a pre-alignment filter passing genome pairs with at least common 30 k-mers
+# and have minimum sequence identity of 30%.
 ./vclust.py prefilter -i genomes.fna -o fltr.txt --min-kmers 30 --min-ident 0.30
 ```
 
 ```bash
+# Calculate ANI values for genome pairs specified in the filter. Report genome pairs
+# that meet the IMG/PR thresholds (ANI ≥ 70% and query coverage ≥ 50%)
 ./vclust.py align -i genomes -o ani.tsv --filter fltr.txt --out-ani 0.70 --out-qcov 0.50
 ```
 
 ```bash
+# Cluster the genomes using the Leiden algorithm. The cluster edges are weighted by
+# the gani metric (ANI x coverage), with a Leiden resolution parameter set to 0.9.
 ./vclust.py cluster -i ani.tsv -o clusters.tsv --ids ani.ids.tsv --algorithm leiden \
 --metric gani --gani 0.35 --leiden-resolution 0.9
 ```
 
+## 8. FAQ
 
-## 8. Tests
+**Q: Does Vclust handle circularly permuted bacteriophage genomes?**
+
+**A:** Yes, Vclust handles circularly permuted bacteriophage genomes by being robust to sequence rearrangements (e.g., translocations and circular permutations). It calculates ANI and alignment fraction (coverage) across all local alignments between two genomes, even when homologous segments are reordered. In tests with circularly permuted genomes, Vclust showed minimal inaccuracies in ANI and coverage, with a mean absolute error of 0.04% compared to non-permuted genomes. These small discrepancies are due to short alignment breaks at the breakpoint positions in circular genomes.
+
+
+**Q: How does Vclust's sensitivity compare to BLASTn and MegaBLAST?**
+
+**A:** Vclust is designed to match the sensitivity of BLASTn, which is considered highly reliable for estimating ANI. Like BLASTn, Vclust uses an anchor length of 11 nucleotides to align sequences with high precision. MegaBLAST, in comparison, uses a larger word size of 28 nucleotides, making it less sensitive.
+
+
+**Q: Can I increase the default minimum sequence identity (0.7) in prefilter if I'm aiming for a higher ANI threshold (0.95)?**
+
+**A:** Yes, you can safely increase the default minimum sequence identity (`--min-ident`) in the prefilter step to target a higher ANI threshold. We designed the sequence identity calculation in the `prefilter` command to be higher than the ANI derived from the subsequent `align` step. Specifically, while the sequence identity is calculated similarly to ANI in Mash, Vclust's calculation is based on the shorter sequence. As a result, the default `--min-ident` of `0.7` can be raised to values closer to the final alignment-based ANI threshold.
+
+In our tests for vOTU clustering (ANI ≥ 95% and AF ≥ 85%), even increasing `--min-ident` to `0.95` during prefiltering did not exclude any genome pairs with an alignment-based ANI of ≥ 95%. Additionally, raising the default `--min-ident` from `0.7` to `0.95` significantly reduces the number of genome pairs requiring alignment, thereby speeding up the alignment step.
+
+
+## 9. Tests
 
 To ensure that Vclust works as expected, you can run tests using [pytest](https://docs.pytest.org/).
 
@@ -610,10 +626,10 @@ To ensure that Vclust works as expected, you can run tests using [pytest](https:
 pytest test.py
 ```
 
-## 9. Citation
+## 10. Citation
 
 Zielezinski A, Gudyś A, Barylski J, Siminski K, Rozwalak P, Dutilh BE, Deorowicz S. *Ultrafast and accurate sequence alignment and clustering of viral genomes*. bioRxiv [[doi:10.1101/2024.06.27.601020](https://www.biorxiv.org/content/10.1101/2024.06.27.601020)].
 
-## 10. License
+## 11. License
 
 [GNU General Public License, version 3](https://www.gnu.org/licenses/gpl-3.0.html)
