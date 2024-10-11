@@ -15,7 +15,7 @@ import sys
 import typing
 import uuid
 
-__version__ = '1.2.4'
+__version__ = '1.2.5'
 
 DEFAULT_THREAD_COUNT = min(multiprocessing.cpu_count(), 64)
 
