@@ -1,4 +1,4 @@
-name: GitHub Actions CI
+name: Build and tests
 
 on:
   push:
@@ -16,7 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         machine: [ubuntu-latest, macOS-12]
-        compiler: [g++-12]
+        compiler: [12]
     runs-on: ['${{ matrix.machine }}']   
 
     steps:
@@ -26,7 +26,7 @@ jobs:
     
     - name: make
       run: | 
-        make -j32 CXX=${{matrix.compiler}} 
+        make -j32 CXX=g++-${{matrix.compiler}} CC=gcc-${{matrix.compiler}}
     - name: tar artifacts
       run: tar -cvf vclust.tar ./vclust.py ./test.py ./example ./bin/kmer-db ./bin/lz-ani ./bin/clusty ./bin/multi-fasta-split
     
@@ -43,7 +43,6 @@ jobs:
       fail-fast: false
       matrix:
         machine: [ubuntu-latest, macOS-12]
-        compiler: [g++-11]
      
     runs-on: ['${{ matrix.machine }}']    
     

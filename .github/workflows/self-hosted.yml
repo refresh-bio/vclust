@@ -41,21 +41,20 @@ jobs:
         machine: [x64_linux]
         platform: [avx2]
         compiler: [14]
-        leiden: [true]
         include:
-        - {machine: arm64_linux, platform: arm8, compiler: 12, leiden: true}
-        - {machine: x64_mac, platform: avx2, compiler: 12, leiden: false}
-        - {machine: arm64_mac, platform: m1, compiler: 13, leiden: false}
+        - {machine: arm64_linux, platform: arm8, compiler: 12}
+        - {machine: x64_mac, platform: avx2, compiler: 12}
+        - {machine: arm64_mac, platform: m1, compiler: 12}
         
     runs-on: [self-hosted, vclust, '${{ matrix.machine }}'] 
 
     steps:
     - name: make
-      run: make -j32 CXX=g++-${{matrix.compiler}} CC=gcc-${{matrix.compiler}} STATIC_LINK=true PLATFORM=${{ matrix.platform }} LEIDEN=${{ matrix.leiden }}
+      run: make -j32 CXX=g++-${{matrix.compiler}} CC=gcc-${{matrix.compiler}} PLATFORM=${{ matrix.platform }} LEIDEN=true
 
 ########################################################################################
-  pipeline:
-    name: Pipeline
+  pipeline-linux:
+    name: Pipeline (linux)
     needs: make
     strategy:
       fail-fast: false
@@ -64,7 +63,23 @@ jobs:
     runs-on: [self-hosted, vclust, '${{ matrix.machine }}']
     
     steps:
-    
     - name: run pipeline
       run: |
         pytest test.py
+
+  ########################################################################################
+  pipeline-macos:
+    name: Pipeline (macOS)
+    needs: make
+    strategy:
+      fail-fast: false
+      matrix:
+        machine: [x64_mac, arm64_mac]
+    runs-on: [self-hosted, vclust, '${{ matrix.machine }}']
+    
+    steps:
+    
+    - name: run pipeline
+      run: |
+        source /Users/agudys/agudys-env/bin/activate
+        pytest test.py     

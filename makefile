@@ -8,18 +8,11 @@ else                          # If uname not available => 'not'
 	uname_M := $(shell sh -c 'uname -m 2>/dev/null || echo not')
 endif
 
-ifeq ($(uname_S),Darwin)
-	STATIC_LINK_FLAG := false
-else
-	STATIC_LINK_FLAG := true
-endif
-
-
 prep:
-	cd 3rd_party/kmer-db && $(MAKE) -j
-	cd 3rd_party/lz-ani && $(MAKE) -j
-	cd 3rd_party/clusty && $(MAKE) -j STATIC_LINK=$(STATIC_LINK_FLAG)
-	cd 3rd_party/ref-utils && $(MAKE) -j
+	cd 3rd_party/kmer-db && $(MAKE) -j 
+	cd 3rd_party/lz-ani && $(MAKE) -j 
+	cd 3rd_party/clusty && $(MAKE) -j 
+	cd 3rd_party/ref-utils && $(MAKE) -j 
 	mkdir -p bin
 	cp 3rd_party/kmer-db/kmer-db ./bin/
 	cp 3rd_party/lz-ani/lz-ani ./bin/
