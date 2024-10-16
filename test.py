@@ -33,7 +33,7 @@ def test_dir():
 
 
 @pytest.mark.parametrize('subcommand',[
-    'prefilter', 'align', 'cluster',
+    'prefilter', 'align', 'cluster', 'info',
 ])
 def test_subcommands(subcommand):
     cmd = [

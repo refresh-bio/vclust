@@ -51,11 +51,35 @@ jobs:
     steps:
     - name: make
       run: make -j32 CXX=g++-${{matrix.compiler}} CC=gcc-${{matrix.compiler}} PLATFORM=${{ matrix.platform }} LEIDEN=true
+    - name: print info
+      run: python3 vclust.py info 
+
+########################################################################################
+  print-info:
+    name: Print info
+    needs: make
+    strategy:
+      fail-fast: false
+      matrix:
+        machine: [x64_linux]
+        platform: [avx2]
+        compiler: [14]
+        include:
+        - {machine: arm64_linux, platform: arm8, compiler: 12}
+        - {machine: x64_mac, platform: avx2, compiler: 12}
+        - {machine: arm64_mac, platform: m1, compiler: 12}
+        
+    runs-on: [self-hosted, vclust, '${{ matrix.machine }}'] 
+
+    steps:
+    - name: print info
+      run: python3 vclust.py info 
+
 
 ########################################################################################
   pipeline-linux:
     name: Pipeline (linux)
-    needs: make
+    needs: print-info
     strategy:
       fail-fast: false
       matrix:
@@ -70,7 +94,7 @@ jobs:
   ########################################################################################
   pipeline-macos:
     name: Pipeline (macOS)
-    needs: make
+    needs: print-info
     strategy:
       fail-fast: false
       matrix:

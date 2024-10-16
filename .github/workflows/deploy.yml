@@ -72,6 +72,8 @@ jobs:
     steps:
     - name: help
       run: python3 vclust.py
+    - name: print info
+      run: python3 vclust.py info
 
 ########################################################################################
   upload:

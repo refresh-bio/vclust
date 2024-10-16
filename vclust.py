@@ -15,7 +15,7 @@ import sys
 import typing
 import uuid
 
-__version__ = '1.2.6'
+__version__ = '1.2.7'
 
 DEFAULT_THREAD_COUNT = min(multiprocessing.cpu_count(), 64)
 
@@ -33,7 +33,7 @@ ALIGN_FIELDS = [
     'qidx', 'ridx', 'query', 'reference',  'tani', 'gani', 'ani', 'qcov',
     'rcov', 'num_alns', 'len_ratio', 'qlen', 'rlen',  'nt_match', 'nt_mismatch', 
 ]
-# vclust align output formats
+# Vclust align output formats
 ALIGN_OUTFMT = {
     'lite': ALIGN_FIELDS[:2] + ALIGN_FIELDS[4:11],
     'standard': ALIGN_FIELDS[:11],
@@ -544,6 +544,14 @@ def get_parser() -> argparse.ArgumentParser:
         '-h', '--help',
         action='help',
         help='Show this help message and exit'
+    )
+
+    # Info parser
+    info_parser = subparsers.add_parser(
+        'info',
+        help='Show information about the tool and its dependencies',
+        formatter_class=fmt,
+        add_help=False,
     )
 
     # Show help message if the script is run without any arguments.
@@ -1137,6 +1145,13 @@ def cmd_clusty(
     return cmd
 
 
+def vclust_info():
+    print(f'Vclust               {__version__}')
+    for bin_path in [BIN_KMERDB, BIN_FASTASPLIT, BIN_LZANI, BIN_CLUSTY]:
+        validate_binary(bin_path)
+        print(f'{bin_path.name:<20} ok')
+
+
 class CustomHelpFormatter(argparse.HelpFormatter):
     """Custom help message formatter for argparse."""
 
@@ -1166,11 +1181,16 @@ def main():
     # Initialize logger
     logger = create_logger(
         name='vclust',
-        log_level=logging.INFO if args.verbose else logging.ERROR,
+        log_level=(logging.INFO 
+                   if (hasattr(args, 'verbose') and args.verbose) 
+                   else logging.ERROR),
     )
 
+    # Info
+    if args.command == 'info':
+        vclust_info()
     # Prefilter
-    if args.command == 'prefilter':
+    elif args.command == 'prefilter':
         args.bin_kmerdb = validate_binary(args.bin_kmerdb)
         args = validate_args_prefilter(args, parser)
         args = validate_args_fasta_input(args, parser)
