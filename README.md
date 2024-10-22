@@ -1,11 +1,11 @@
 # <img src="./images/logo.svg" alt="Vclust logo" /> Vclust
 
-![version](https://img.shields.io/badge/version-1.2.8-blue.svg)
-![PyPI - Version](https://img.shields.io/pypi/v/vclust?label=PyPI%20version&color=blue)
+[![GitHub Release](https://img.shields.io/github/v/release/refresh-bio/vclust)](https://github.com/refresh-bio/vclust/releases)
+[![PyPI - Version](https://img.shields.io/pypi/v/vclust?label=PyPI%20version&color=blue)](https://pypi.org/project/vclust/)
 [![Build and tests](../../workflows/Build%20and%20tests/badge.svg)](../../actions/workflows/main.yml)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-![PyPI - Downloads](https://img.shields.io/pypi/dm/vclust?label=PyPI%20downloads)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/vclust?label=PyPI%20downloads)](https://pypi.org/project/vclust/)
 [![GitHub downloads](https://img.shields.io/github/downloads/refresh-bio/vclust/total.svg?style=flag&label=GitHub%20downloads)](https://github.com/refresh-bio/vclust/releases)
 [![Bioconda downloads](https://img.shields.io/conda/dn/bioconda/vclust.svg?style=flag&label=Bioconda%20downloads)](https://anaconda.org/bioconda/vclust)
 
