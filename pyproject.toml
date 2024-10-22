@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["vclust"]
+
+[tool.setuptools.packages.find]
+where = ["./"]
+
+[project]
+name = "vclust-test"
+description = """Fast and accurate tool for calculating \
+Average Nucleotide Identity (ANI) and clustering virus \
+genomes and metagenomic contigs"""
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [
+  { name = "Andrzej Zielezinski", email = "andrzej.zielezinski@amu.edu.pl" },
+  { name = "Adam Gudyś", email = "adam.gudys@polsl.pl" },
+  { name = "Sebastian Deorowicz", email = "sebastian.deorowicz@polsl.pl" },
+]
+requires-python = ">=3.7"
+dynamic = ["version"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Natural Language :: English",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+  "Operating System :: POSIX :: Linux",
+  "Operating System :: MacOS",
+  "License :: OSI Approved :: GNU Affero General Public License v3",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12", 
+]
+
+[tool.setuptools.dynamic]
+version = { attr = "vclust.__version__" }
+
+[tool.setuptools.package-data]
+"*" = ["bin/*"]
+
+[project.scripts]
+vclust = "vclust:main"
+
+[project.urls]
+Homepage = "https://github.com/refresh-bio/vclust"
+Documentation = "https://github.com/refresh-bio/vclust/wiki"
+Website = "http://vclust.org"

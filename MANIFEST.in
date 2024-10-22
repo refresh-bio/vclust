@@ -1,0 +1,4 @@
+include README.md
+include LICENSE
+recursive-include bin *
+recursive-exclude 3rd_party *

@@ -9,13 +9,14 @@ import logging
 import multiprocessing
 import os
 import pathlib
+import platform
 import shutil
 import subprocess
 import sys
 import typing
 import uuid
 
-__version__ = '1.2.7'
+__version__ = '1.2.8'
 
 DEFAULT_THREAD_COUNT = min(multiprocessing.cpu_count(), 64)
 
@@ -59,7 +60,7 @@ def get_parser() -> argparse.ArgumentParser:
         return f
 
     parser = argparse.ArgumentParser(
-        description=f'%(prog)s v.{__version__}: calculate ANI and cluster '
+        description=f'%(prog)s v{__version__}: calculate ANI and cluster '
         'virus (meta)genome sequences',
         add_help=False,
     )
@@ -117,7 +118,7 @@ def get_parser() -> argparse.ArgumentParser:
         '--min-kmers',
         metavar="<int>",
         type=int,
-        default=10,
+        default=20,
         help='Filter genome pairs based on minimum number of shared k-mers '
              '[%(default)s]'
     )
@@ -531,7 +532,7 @@ def get_parser() -> argparse.ArgumentParser:
         '--bin',
         metavar='<file>',
         type=pathlib.Path,
-        dest="BIN_CLUSTY",
+        dest="bin_clusty",
         default=f'{BIN_CLUSTY}',
         help='Path to the Clusty binary [%(default)s]'
     )
@@ -603,8 +604,8 @@ def get_uuid() -> str:
     return f'vclust-{str(uuid.uuid4().hex)[:10]}'
 
 
-def validate_binary(bin_path: pathlib.Path) -> pathlib.Path:
-    """Validates the existence and executability of a binary file.
+def _validate_binary(bin_path: pathlib.Path) -> pathlib.Path:
+    """Validates the presence and executability of a binary file.
 
     This function checks if the provided path points to an existing binary file
     and if it is executable. It also attempts to run the binary to ensure it
@@ -618,16 +619,16 @@ def validate_binary(bin_path: pathlib.Path) -> pathlib.Path:
         pathlib.Path: The resolved path to the binary file.
 
     Raises:
-        SystemExit: If the binary file does not exist, is not executable, or 
-                    if running the binary encounters an error.
+        RuntimeError: If the binary file does not exist, is not executable, 
+                      or if running the binary encounters an error.
     """
     bin_path = bin_path.resolve()
 
     if not bin_path.exists():
-        exit(f'error: Executable not found: {bin_path}')
+        raise RuntimeError(f'File not found: {bin_path}')
     
     if not bin_path.is_file() or not os.access(bin_path, os.X_OK):
-        exit(f'error: Binary file not executable: {bin_path}')
+        raise RuntimeError(f'Binary file not executable: {bin_path}')
     
     try:
         subprocess.run(
@@ -638,12 +639,19 @@ def validate_binary(bin_path: pathlib.Path) -> pathlib.Path:
             check=True
         )
     except subprocess.CalledProcessError as e:
-        exit(f'error: Running {bin_path} failed with message: {e.stderr}')
+        raise RuntimeError(f'Running {bin_path} failed with message: {e.stderr}')
     except OSError as e:
-        exit(f'error: OSError in {bin_path} - {e}')
+        raise RuntimeError(f'OSError in {bin_path} - {e}')
     except Exception as e:
-        exit(f'error: Unexpected error in binary {bin_path} - {e}')
+        raise RuntimeError(f'Unexpected error in binary {bin_path} - {e}')
     return bin_path
+
+
+def validate_binary(bin_path: pathlib.Path) -> pathlib.Path:
+    try:
+        return _validate_binary(bin_path)
+    except RuntimeError as e:
+        sys.exit(f'error: {e}')
 
 
 def validate_args_fasta_input(args, parser) -> argparse.Namespace:
@@ -732,13 +740,13 @@ def run(
         )
     except subprocess.CalledProcessError as e:
         logger.error(f'Process {" ".join(cmd)} failed with message: {e.stderr}')
-        exit(1)
+        sys.exit(1)
     except OSError as e:
         logger.error(f'OSError: {" ".join(cmd)} failed with message: {e}')
-        exit(1)
+        sys.exit(1)
     except Exception as e:
         logger.error(f'Unexpected: {" ".join(cmd)} failed with message: {e}')
-        exit(1)  
+        sys.exit(1)  
     logger.info(f'Done')
     return process
 
@@ -1145,11 +1153,75 @@ def cmd_clusty(
     return cmd
 
 
-def vclust_info():
-    print(f'Vclust               {__version__}')
-    for bin_path in [BIN_KMERDB, BIN_FASTASPLIT, BIN_LZANI, BIN_CLUSTY]:
-        validate_binary(bin_path)
-        print(f'{bin_path.name:<20} ok')
+def vclust_info() -> None:
+    """    
+    Displays the Vclust version, installation paths, and binary dependencies. 
+    Checks for the presence and executable status of required binaries.
+
+    Exits with a non-zero status if any dependencies are missing or 
+    not executable.
+
+    Returns:
+        None
+    
+    Raises:
+        SystemExit: If any binary dependencies are missing or not executable.
+    
+    """
+    # ANSI color codes for terminal output.
+    GREEN = '\033[92m'
+    RED = '\033[91m'
+    RESET = '\033[0m'
+
+    binaries = {
+        'Kmer-db': BIN_KMERDB,
+        'LZ-ANI': BIN_LZANI,
+        'Clusty': BIN_CLUSTY,
+        'multi-fasta-split': BIN_FASTASPLIT,
+    }
+
+    output_lines = [
+        f'Vclust version {__version__} (Python {platform.python_version()})',
+        '',
+        'Installed at:',
+        f'   {pathlib.Path(__file__).resolve()}',
+        f'   {BIN_DIR.resolve()}',
+        '',
+        'Binary dependencies:',
+    ]
+
+    errors = []  # List to collect any errors encountered during binary checks.
+
+    # Check each binary's presence and version.
+    for name, path in binaries.items():
+        try:
+            _validate_binary(path)
+            version = subprocess.run(
+                [str(path), '-version' if name == 'Kmer-db' else '--version'],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=True
+            ).stderr.strip()
+            output_lines.append(f'   {name:<20} v{version:<10}')
+        except Exception as e:
+            output_lines.append(f'   {name:<20} [error]')
+            errors.append((name, e))
+
+    # Append the status summary based on any encountered errors.
+    output_lines.append('')
+
+    if errors:
+        output_lines.append(f'{RED}Status: error{RESET}')
+        output_lines.extend(f"   - {name}: {error}" for name, error in errors)
+    else:
+        output_lines.append(f'{GREEN}Status: ok{RESET}')
+
+    # Output the complete information.
+    print('\n'.join(output_lines))
+
+    if errors:
+        sys.exit(1)
 
 
 class CustomHelpFormatter(argparse.HelpFormatter):
@@ -1324,7 +1396,7 @@ def main():
 
     # Cluster
     elif args.command == 'cluster':
-        args.BIN_CLUSTY = validate_binary(args.BIN_CLUSTY)
+        args.bin_clusty = validate_binary(args.bin_clusty)
         args = validate_args_cluster(args, parser)
 
         cmd = cmd_clusty(
@@ -1344,7 +1416,7 @@ def main():
             leiden_resolution=args.leiden_resolution,
             leiden_beta=args.leiden_beta,
             leiden_iterations=args.leiden_iterations,
-            bin_path=args.BIN_CLUSTY,
+            bin_path=args.bin_clusty,
         )
         p = run(cmd, args.verbose, logger)
 

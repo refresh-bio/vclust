@@ -1,10 +1,13 @@
 # <img src="./images/logo.svg" alt="Vclust logo" /> Vclust
 
-![version](https://img.shields.io/badge/version-1.2.7-blue.svg)
-[![GitHub downloads](https://img.shields.io/github/downloads/refresh-bio/vclust/total.svg?style=flag&label=GitHub%20downloads)](https://github.com/refresh-bio/vclust/releases)
-[![Bioconda downloads](https://img.shields.io/conda/dn/bioconda/vclust.svg?style=flag&label=Bioconda%20downloads)](https://anaconda.org/bioconda/vclust)
+![version](https://img.shields.io/badge/version-1.2.8-blue.svg)
+![PyPI - Version](https://img.shields.io/pypi/v/vclust?label=PyPI%20version&color=blue)
 [![Build and tests](../../workflows/Build%20and%20tests/badge.svg)](../../actions/workflows/main.yml)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
+![PyPI - Downloads](https://img.shields.io/pypi/dm/vclust?label=PyPI%20downloads)
+[![GitHub downloads](https://img.shields.io/github/downloads/refresh-bio/vclust/total.svg?style=flag&label=GitHub%20downloads)](https://github.com/refresh-bio/vclust/releases)
+[![Bioconda downloads](https://img.shields.io/conda/dn/bioconda/vclust.svg?style=flag&label=Bioconda%20downloads)](https://anaconda.org/bioconda/vclust)
 
 ![x86-64](https://img.shields.io/static/v1?label=%E2%80%8B&message=x86-64&color=yellow&logo=PCGamingWiki&logoColor=white)
 ![ARM](https://img.shields.io/static/v1?label=%E2%80%8B&message=ARM&color=yellow&logo=Raspberry%20Pi&logoColor=white)
@@ -51,18 +54,17 @@ For datasets containing up to 1000 viral genomes, Vclust is available at [http:/
 ## Quick start
 
 ```bash
-# Clone repository and build Vclust
-git clone --recurse-submodules https://github.com/refresh-bio/vclust
-cd vclust && make -j
+# Install Vclust (requires Python >= 3.7)
+pip install vclust
 
 # Prefilter similar genome sequence pairs before conducting pairwise alignments.
-./vclust.py prefilter -i example/multifasta.fna -o fltr.txt
+vclust prefilter -i example/multifasta.fna -o fltr.txt
 
 # Align similar genome sequence pairs and calculate pairwise ANI measures.
-./vclust.py align -i example/multifasta.fna -o ani.tsv --filter fltr.txt
+vclust align -i example/multifasta.fna -o ani.tsv --filter fltr.txt
 
 # Cluster genome sequences based on given ANI measure and minimum threshold.
-./vclust.py cluster -i ani.tsv -o clusters.tsv --ids ani.ids.tsv --metric ani --ani 0.95
+vclust cluster -i ani.tsv -o clusters.tsv --ids ani.ids.tsv --metric ani --ani 0.95
 ```
 ## Documentation
 
