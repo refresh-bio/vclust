@@ -50,7 +50,7 @@ jobs:
 
     steps:
     - name: make
-      run: make -j32 CXX=g++-${{matrix.compiler}} CC=gcc-${{matrix.compiler}} PLATFORM=${{ matrix.platform }} LEIDEN=true
+      run: gmake -j32 CXX=g++-${{matrix.compiler}} CC=gcc-${{matrix.compiler}} PLATFORM=${{ matrix.platform }} LEIDEN=true STATIC_LINK=true
     - name: print info
       run: python3 vclust.py info 
 

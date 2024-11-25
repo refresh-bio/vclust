@@ -16,7 +16,7 @@ import sys
 import typing
 import uuid
 
-__version__ = '1.2.8'
+__version__ = '1.2.9'
 
 DEFAULT_THREAD_COUNT = min(multiprocessing.cpu_count(), 64)
 
@@ -95,7 +95,7 @@ def get_parser() -> argparse.ArgumentParser:
         metavar='<file>',
         type=input_path_type,
         dest='input_path',
-        help='Input FASTA file or directory with FASTA files',
+        help='Input FASTA file or directory of files (gzipped or uncompressed)',
         required=True
     )
     prefilter_required.add_argument(
@@ -119,16 +119,15 @@ def get_parser() -> argparse.ArgumentParser:
         metavar="<int>",
         type=int,
         default=20,
-        help='Filter genome pairs based on minimum number of shared k-mers '
-             '[%(default)s]'
+        help='Minimum number of shared k-mers between two genomes [%(default)s]'
     )
     prefilter_parser.add_argument(
         '--min-ident',
         metavar="<float>",
         type=ranged_float_type,
         default=0.7,
-        help='Filter genome pairs based on minimum sequence identity of '
-        'the shorter sequence (0-1) [%(default)s]'
+        help='Minimum sequence identity (0-1) between two genomes. Calculated '
+        'based on the shorter sequence [%(default)s]'
     )
     prefilter_parser.add_argument(
         '--batch-size',
@@ -144,9 +143,9 @@ def get_parser() -> argparse.ArgumentParser:
         metavar="<float>",
         type=ranged_float_type,
         default=1.0,
-        help='Fraction of k-mers to analyze for each genome (0-1). A lower '
-        'value reduces RAM usage and speeds up processing (affects sensitivity) '
-        '[%(default)s]'
+        help='Fraction of k-mers to analyze in each genome (0-1). A lower '
+        'value reduces RAM usage and speeds up processing. By default, all '
+        'k-mers [%(default)s]'
     )
     prefilter_parser.add_argument(
         '--max-seqs',
@@ -163,22 +162,6 @@ def get_parser() -> argparse.ArgumentParser:
         '--keep_temp',
         action="store_true",
         help='Keep temporary Kmer-db files [%(default)s]'
-    )
-    prefilter_parser.add_argument(
-        '--bin',
-        metavar='<file>',
-        type=pathlib.Path,
-        dest="bin_kmerdb",
-        default=f'{BIN_KMERDB}',
-        help='Path to the Kmer-db binary [%(default)s]'
-    )
-    prefilter_parser.add_argument(
-        '--bin-fasta',
-        metavar='<file>',
-        type=pathlib.Path,
-        dest="bin_fastasplit",
-        default=f'{BIN_FASTASPLIT}',
-        help='Path to the multi-fasta-split binary [%(default)s]'
     )
     prefilter_parser.add_argument(
         '-t', '--threads',
@@ -214,7 +197,7 @@ def get_parser() -> argparse.ArgumentParser:
         metavar='<file>',
         type=input_path_type,
         dest='input_path',
-        help='Input FASTA file or directory with FASTA files',
+        help='Input FASTA file or directory of files (gzipped or uncompressed)',
         required=True
     )
     align_required.add_argument(
@@ -297,14 +280,6 @@ def get_parser() -> argparse.ArgumentParser:
         default=0,
         help='Min. reference coverage (aligned fraction) to output (0-1) '
         '[%(default)s]'
-    )
-    align_parser.add_argument(
-        '--bin',
-        metavar='<file>',
-        type=pathlib.Path,
-        dest='bin_lzani',
-        default=f'{BIN_LZANI}',
-        help='Path to the LZ-ANI binary [%(default)s]'
     )
     align_parser.add_argument(
         '--mal',
@@ -527,14 +502,6 @@ def get_parser() -> argparse.ArgumentParser:
         type=int,
         default=2,
         help='Number of iterations for the Leiden algorithm [%(default)s]'
-    )
-    cluster_parser.add_argument(
-        '--bin',
-        metavar='<file>',
-        type=pathlib.Path,
-        dest="bin_clusty",
-        default=f'{BIN_CLUSTY}',
-        help='Path to the Clusty binary [%(default)s]'
     )
     cluster_parser.add_argument(
         '-v', '--verbose',
@@ -1215,7 +1182,7 @@ def vclust_info() -> None:
         output_lines.append(f'{RED}Status: error{RESET}')
         output_lines.extend(f"   - {name}: {error}" for name, error in errors)
     else:
-        output_lines.append(f'{GREEN}Status: ok{RESET}')
+        output_lines.append(f'{GREEN}Status: ready{RESET}')
 
     # Output the complete information.
     print('\n'.join(output_lines))
@@ -1263,7 +1230,7 @@ def main():
         vclust_info()
     # Prefilter
     elif args.command == 'prefilter':
-        args.bin_kmerdb = validate_binary(args.bin_kmerdb)
+        validate_binary(BIN_KMERDB)
         args = validate_args_prefilter(args, parser)
         args = validate_args_fasta_input(args, parser)
 
@@ -1278,13 +1245,12 @@ def main():
         else:
             # Split multi-fasta file.
             if args.batch_size:
-                args.bin_fastasplit = validate_binary(args.bin_fastasplit)
+                validate_binary(BIN_FASTASPLIT)
                 cmd = cmd_fastasplit(
                     input_fasta=args.input_path, 
                     out_dir=out_dir,
                     n=args.batch_size,
                     verbose=args.verbose,
-                    bin_path=args.bin_fastasplit,
                 )
                 p = run(cmd, args.verbose, logger)
                 for f in out_dir.glob('part_*'):
@@ -1311,7 +1277,6 @@ def main():
                 kmer_size=args.k,
                 kmers_fraction=args.kmers_fraction,
                 num_threads=args.num_threads,
-                bin_path=args.bin_kmerdb,
             )
             p = run(cmd, args.verbose, logger)
             db_paths.append(db_path)
@@ -1333,7 +1298,6 @@ def main():
             min_ident=args.min_ident,
             max_seqs=args.max_seqs,
             num_threads=args.num_threads,
-            bin_path=args.bin_kmerdb,
         )
         p = run(cmd, args.verbose, logger)
 
@@ -1342,7 +1306,6 @@ def main():
             outfile_distance=args.output_path,
             min_ident=args.min_ident,
             num_threads=args.num_threads,
-            bin_path=args.bin_kmerdb,
         )
         p = run(cmd, args.verbose, logger)
 
@@ -1353,7 +1316,7 @@ def main():
 
     # Align
     elif args.command == 'align':
-        args.bin_lzani = validate_binary(args.bin_lzani)
+        validate_binary(BIN_LZANI)
         args = validate_args_fasta_input(args, parser)
 
         out_dir = args.output_path.parent / get_uuid()
@@ -1386,7 +1349,6 @@ def main():
             ar=args.ar,
             num_threads=args.num_threads,
             verbose=args.verbose,
-            bin_path=args.bin_lzani,
         )
         p = run(cmd, args.verbose, logger)
 
@@ -1396,7 +1358,7 @@ def main():
 
     # Cluster
     elif args.command == 'cluster':
-        args.bin_clusty = validate_binary(args.bin_clusty)
+        validate_binary(BIN_CLUSTY)
         args = validate_args_cluster(args, parser)
 
         cmd = cmd_clusty(
@@ -1416,7 +1378,6 @@ def main():
             leiden_resolution=args.leiden_resolution,
             leiden_beta=args.leiden_beta,
             leiden_iterations=args.leiden_iterations,
-            bin_path=args.bin_clusty,
         )
         p = run(cmd, args.verbose, logger)
 

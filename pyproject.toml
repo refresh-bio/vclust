@@ -9,7 +9,7 @@ py-modules = ["vclust"]
 where = ["./"]
 
 [project]
-name = "vclust-test"
+name = "vclust"
 description = """Fast and accurate tool for calculating \
 Average Nucleotide Identity (ANI) and clustering virus \
 genomes and metagenomic contigs"""
