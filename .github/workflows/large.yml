@@ -1,0 +1,10 @@
+name: Large data CI
+
+on:
+  workflow_dispatch:
+
+jobs:
+  dummy:
+    name: dummy
+    runs-on: echo
+  
