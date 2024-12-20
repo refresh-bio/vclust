@@ -80,15 +80,17 @@ The Vclust documentation is available on the [GitHub Wiki](https://github.com/re
    2. Prefilter
    3. Align
    4. Cluster
+   5. Deduplicate
 5. [Optimizing sensitivity and resource usage](https://github.com/refresh-bio/vclust/wiki/5-Optimizing-sensitivity-and-resource-usage)
 6. [Use cases](https://github.com/refresh-bio/vclust/wiki/6-Use-cases)
    1. Classify viruses into species and genera following ICTV standards
    2. Assign viral contigs into vOTUs following MIUViG standards
    3. Dereplicate viral contigs into representative genomes
-   4. Calculate pairwise similarities between all-versus-all genomes
-   5. Process large dataset of diverse virus genomes (IMG/VR)
+   4. Process large dataset of diverse virus genomes (IMG/VR)
+   5. Deduplicate (remove duplicate sequences) between and within multiple datasets
    6. Process large dataset of highly redundant virus genomes
    7. Cluster plasmid genomes into pOTUs
+   8. Calculate pairwise similarities between all-versus-all genomes
 7. [FAQ: Frequently Asked Questions](https://github.com/refresh-bio/vclust/wiki/7-FAQ:-Frequently-Asked-Questions)
 
 

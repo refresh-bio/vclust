@@ -13,21 +13,26 @@ import platform
 import shutil
 import subprocess
 import sys
+import tempfile
 import typing
-import uuid
 
-__version__ = '1.2.9'
+__version__ = '1.3.0'
+
+CITATION = '''Zielezinski A, Gudys A et al. (2024) 
+Ultrafast and accurate sequence alignment and clustering of viral genomes. 
+bioRxiv. doi: 10.1101/2024.06.27.601020'''
 
 DEFAULT_THREAD_COUNT = min(multiprocessing.cpu_count(), 64)
 
-VCLUST_DIR = pathlib.Path(__file__).resolve().parent
+VCLUST_SCRIPT_PATH = pathlib.Path(__file__)
+VCLUST_DIR = VCLUST_SCRIPT_PATH.resolve().parent
 
 # Default paths to third-party binaries
 BIN_DIR = VCLUST_DIR / 'bin'
 BIN_KMERDB = BIN_DIR / 'kmer-db'
 BIN_LZANI = BIN_DIR / 'lz-ani'
 BIN_CLUSTY = BIN_DIR / 'clusty'
-BIN_FASTASPLIT = BIN_DIR / 'multi-fasta-split'
+BIN_MFASTA = BIN_DIR / 'mfasta-tool'
 
 # LZ-ANI output columns
 ALIGN_FIELDS = [
@@ -44,7 +49,10 @@ ALIGN_OUTFMT = {
 def get_parser() -> argparse.ArgumentParser:
     """Return an argument parser."""
 
-    fmt = lambda prog: CustomHelpFormatter(prog, max_help_position=32)
+    # Constants and shared utilities
+    formatter_class = lambda prog: CustomHelpFormatter(
+        prog, max_help_position=32, width=100
+    )
 
     def input_path_type(value):
         path = pathlib.Path(value)
@@ -58,10 +66,41 @@ def get_parser() -> argparse.ArgumentParser:
         if f < 0 or f > 1:
             raise argparse.ArgumentTypeError('must be between 0 and 1')
         return f
+    
+    def add_verbosity_argument(parser):
+        parser.add_argument(
+            '-v',
+            metavar='<int>',
+            dest='verbosity_level',
+            type=int,
+            choices=[0, 1, 2],
+            default=1,
+            help='Verbosity level [%(default)s]:\n'
+            '0: Errors only\n1: Info\n2: Debug'
+        )
 
+    def add_help_argument(parser):
+        parser.add_argument(
+            '-h', '--help',
+            action='help',
+            help='Show this help message and exit'
+        )
+
+    def add_threads_argument(parser):
+        parser.add_argument(
+            '-t', '--threads',
+            metavar="<int>",
+            dest="num_threads",
+            type=int,
+            default=DEFAULT_THREAD_COUNT,
+            help='Number of threads [%(default)s]'
+        )
+
+    # Create the main parser
     parser = argparse.ArgumentParser(
-        description=f'%(prog)s v{__version__}: calculate ANI and cluster '
-        'virus (meta)genome sequences',
+        description=f'''%(prog)s v{__version__}: calculate ANI and cluster 
+        virus (meta)genome sequences''',
+        formatter_class=formatter_class,
         add_help=False,
     )
     parser.add_argument(
@@ -70,24 +109,84 @@ def get_parser() -> argparse.ArgumentParser:
         version=f'v{__version__}',
         help="Display the tool's version and exit"
     )
-    parser.add_argument(
-        '-h', '--help',
-        action='help',
-        help='Show this help message and exit'
-    )
+    add_help_argument(parser)
 
     subparsers = parser.add_subparsers(dest='command')
+
+    # Deduplicate parser
+    deduplicate_epilog = [
+        'Examples:',
+        'vclust deduplicate -i refseq.fna genbank.fna -o nr.fna --add-prefixes',
+        'vclust deduplicate -i refseq.fna genbank.fna -o nr.fna.gz --gzip-out '
+        '--add-prefixes',
+    ]
+    deduplicate_parser = subparsers.add_parser(
+        'deduplicate',
+        help='Deduplicate and merge genome sequences from multiple FASTA files',
+        formatter_class=formatter_class,
+        add_help=False,
+        epilog='\n'.join(deduplicate_epilog)
+    )
+    deduplicate_optional = deduplicate_parser._action_groups.pop()
+    deduplicate_required = deduplicate_parser.add_argument_group(
+        'required arguments'
+    )
+    deduplicate_parser._action_groups.append(deduplicate_optional)
+
+    deduplicate_required.add_argument(
+        '-i', '--in',
+        metavar='<file>',
+        type=input_path_type,
+        dest='input_path',
+        nargs='+',
+        help='Space-separated input FASTA files (gzipped or uncompressed)',
+    )
+    deduplicate_required.add_argument(
+        '-o', '--out',
+        metavar='<file>',
+        type=pathlib.Path,
+        dest='output_path',
+        help='Output FASTA file with unique, nonredundant sequences, removing '
+        'duplicates and their reverse complements',
+        required=True
+    )
+    deduplicate_parser.add_argument(
+        '--add-prefixes',
+        metavar='<str>',
+        nargs='*',
+        default=False,
+        help='Add prefixes to sequence IDs. Without any values, prefixes are '
+        'set to input file names. Provide space-separated prefixes to override.'
+        ' Default: prefixes are disabled [%(default)s]'
+    )
+    deduplicate_parser.add_argument(
+        '--gzip-output',
+        action="store_true",
+        help='Compress the output FASTA file with gzip [%(default)s]'
+    )
+    deduplicate_parser.add_argument(
+        '--gzip-level',
+        metavar='<int>',
+        type=int,
+        default=4,
+        help='Compression level for gzip (1-9) [%(default)s]'
+    )
+    add_threads_argument(deduplicate_parser)
+    add_verbosity_argument(deduplicate_parser)
+    add_help_argument(deduplicate_parser)
 
     # Prefilter parser    
     prefilter_parser = subparsers.add_parser(
         'prefilter',
         help='Prefilter genome pairs for alignment',
-        formatter_class=fmt,
+        formatter_class=formatter_class,
         add_help=False,
     )
 
     prefilter_optional = prefilter_parser._action_groups.pop()
-    prefilter_required = prefilter_parser.add_argument_group('required arguments')
+    prefilter_required = prefilter_parser.add_argument_group(
+        'required arguments'
+    )
     prefilter_parser._action_groups.append(prefilter_optional)
 
     prefilter_required.add_argument(
@@ -134,9 +233,9 @@ def get_parser() -> argparse.ArgumentParser:
         metavar="<int>",
         type=int,
         default=0,
-        help='Process a multifasta file in smaller batches of n FASTA sequences. '
-        'This option reduces memory at the expense of speed. By default, no '
-        'batch [%(default)s]'
+        help='Process a multifasta file in smaller batches of <int> FASTA '
+        'sequences. This option reduces memory at the expense of speed. '
+        'By default, no batch [%(default)s]'
     )
     prefilter_parser.add_argument(
         '--kmers-fraction',
@@ -158,35 +257,15 @@ def get_parser() -> argparse.ArgumentParser:
         '(affects sensitivity). By default, all sequences that pass the '
         'prefilter are reported [%(default)s]'
     )
-    prefilter_parser.add_argument(
-        '--keep_temp',
-        action="store_true",
-        help='Keep temporary Kmer-db files [%(default)s]'
-    )
-    prefilter_parser.add_argument(
-        '-t', '--threads',
-        metavar="<int>",
-        dest="num_threads",
-        type=int,
-        default=DEFAULT_THREAD_COUNT,
-        help='Number of threads (all by default) [%(default)s]'
-    )
-    prefilter_parser.add_argument(
-        '-v', '--verbose',
-        action="store_true",
-        help="Show Kmer-db progress"
-    )
-    prefilter_parser.add_argument(
-        '-h', '--help',
-        action='help',
-        help='Show this help message and exit'
-    )
+    add_threads_argument(prefilter_parser)
+    add_verbosity_argument(prefilter_parser)
+    add_help_argument(prefilter_parser)
 
     # Align parser
     align_parser = subparsers.add_parser(
         'align',
-        help='Align genome sequences and calculate ANI metrics',
-        formatter_class=fmt,
+        help='Align genome sequence pairs and calculate ANI measures',
+        formatter_class=formatter_class,
         add_help=False,
     )
     align_optional = align_parser._action_groups.pop()
@@ -237,7 +316,7 @@ def get_parser() -> argparse.ArgumentParser:
         metavar='<file>',
         type=pathlib.Path,
         dest='aln_path',
-        help='Write alignments to the specified tsv file (optional).',
+        help='Write alignments to the tsv <file>',
     )
     align_parser.add_argument(
         '--out-ani',
@@ -337,30 +416,15 @@ def get_parser() -> argparse.ArgumentParser:
         default=3,
         help='Min. length of run ending approx. extension [%(default)s]'
     )
-    align_parser.add_argument(
-        '-t', '--threads',
-        metavar='<int>',
-        dest='num_threads',
-        type=int,
-        default=DEFAULT_THREAD_COUNT,
-        help='Number of threads (all by default) [%(default)s]'
-    )
-    align_parser.add_argument(
-        '-v', '--verbose',
-        action="store_true",
-        help="Show LZ-ANI progress"
-    )
-    align_parser.add_argument(
-        '-h', '--help',
-        action='help',
-        help='Show this help message and exit'
-    )
+    add_threads_argument(align_parser)
+    add_verbosity_argument(align_parser)
+    add_help_argument(align_parser)
 
     # Cluster parser
     cluster_parser = subparsers.add_parser(
         'cluster',
         help='Cluster genomes based on ANI thresholds',
-        formatter_class=fmt,
+        formatter_class=formatter_class,
         add_help=False,
     )
     cluster_optional = cluster_parser._action_groups.pop()
@@ -503,22 +567,14 @@ def get_parser() -> argparse.ArgumentParser:
         default=2,
         help='Number of iterations for the Leiden algorithm [%(default)s]'
     )
-    cluster_parser.add_argument(
-        '-v', '--verbose',
-        action="store_true",
-        help="Show Clusty progress"
-    )
-    cluster_parser.add_argument(
-        '-h', '--help',
-        action='help',
-        help='Show this help message and exit'
-    )
+    add_verbosity_argument(cluster_parser)
+    add_help_argument(cluster_parser)
 
     # Info parser
     info_parser = subparsers.add_parser(
         'info',
         help='Show information about the tool and its dependencies',
-        formatter_class=fmt,
+        formatter_class=formatter_class,
         add_help=False,
     )
 
@@ -532,6 +588,7 @@ def get_parser() -> argparse.ArgumentParser:
         ('prefilter', prefilter_parser),
         ('align', align_parser),
         ('cluster', cluster_parser),
+        ('deduplicate', deduplicate_parser),
     ]
     for name, subparser in subparsers:
         if sys.argv[-1] == name:
@@ -541,34 +598,40 @@ def get_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def create_logger(name: str, log_level: int = logging.INFO) -> logging.Logger:
-    """Returns a logger to log events.
+def create_logger(name: str, verbosity_level: int) -> logging.Logger:
+    """Creates and configures a logger with the specified verbosity level.
 
     Args:
-        name:
-            Name of the logger.
-        log_level:
-            The numeric level of the logging event (one of DEBUG, INFO etc.).
+        name (str): Name of the logger.
+        verbosity_level (int): Verbosity level:
+            - 0: ERROR (default)
+            - 1: INFO
+            - 2: DEBUG
 
+    Returns:
+        logging.Logger: Configured logger instance.
     """
+    # Map verbosity levels to logging levels
+    verbosity_to_log_level = {
+        0: logging.ERROR,
+        1: logging.INFO,
+        2: logging.DEBUG
+    }
+    log_level = verbosity_to_log_level.get(verbosity_level, logging.ERROR)
+
+    # Create logger
     logger = logging.getLogger(name)
     logger.setLevel(log_level)
 
-    # Set log format to handlers
-    formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
-
-    # Create stream logger handler
-    sh = logging.StreamHandler()
-    sh.setLevel(log_level)
-    sh.setFormatter(formatter)
-    logger.addHandler(sh)
+    # Prevent duplicate handlers in case the logger is reconfigured
+    if not logger.handlers:
+        # Create a stream handler with a custom formatter
+        handler = logging.StreamHandler()
+        handler.setLevel(log_level)
+        handler.setFormatter(CustomLoggerFormatter())
+        logger.addHandler(handler)
 
     return logger
-
-
-def get_uuid() -> str:
-    """Returns a unique string identifier."""
-    return f'vclust-{str(uuid.uuid4().hex)[:10]}'
 
 
 def _validate_binary(bin_path: pathlib.Path) -> pathlib.Path:
@@ -606,11 +669,11 @@ def _validate_binary(bin_path: pathlib.Path) -> pathlib.Path:
             check=True
         )
     except subprocess.CalledProcessError as e:
-        raise RuntimeError(f'Running {bin_path} failed with message: {e.stderr}')
+        raise RuntimeError(f'Running {bin_path} failed: {e.stderr}')
     except OSError as e:
-        raise RuntimeError(f'OSError in {bin_path} - {e}')
+        raise RuntimeError(f'OSError in {bin_path}: {e}')
     except Exception as e:
-        raise RuntimeError(f'Unexpected error in binary {bin_path} - {e}')
+        raise RuntimeError(f'Unexpected error in {bin_path}: {e}')
     return bin_path
 
 
@@ -634,7 +697,33 @@ def validate_args_fasta_input(args, parser) -> argparse.Namespace:
 
     if not args.is_multifasta and len(args.fasta_paths) < 2:
         parser.error(f'Too few fasta files found in {args.input_path}. '
-                     f'Expected at least 2, but found {len(args.fasta_paths)}.')
+                     f'Expected at least 2, found {len(args.fasta_paths)}.')
+
+    return args
+
+
+def validate_args_deduplicate(args, parser) -> argparse.Namespace:
+    """Validates the arguments for the deduplicate command."""
+    # Validate dataset prefixes
+    if args.add_prefixes:
+        if len(args.add_prefixes) != len(args.input_path):
+            parser.error(
+                'Number of prefixes must match the number of input files.')
+        if any(',' in prefix for prefix in args.add_prefixes):
+            parser.error('Prefixes cannot contain commas.')
+    elif args.add_prefixes == []:
+        args.add_prefixes = [f'{f.stem.split(".")[0]}|' for f in args.input_path]
+    
+    if not (1 <= args.gzip_level <= 9):
+        parser.error('Compression level must be between 1 and 9.')
+
+    # Ensure the output file has a .gz extension if gzip compression is enabled.
+    if args.gzip_output and not args.output_path.suffix == '.gz':
+        args.output_path = pathlib.Path(f'{args.output_path}.gz')
+
+    # Create the output file name for storing information on duplicates.
+    args.output_duplicates_path = pathlib.Path(
+        f'{args.output_path}.duplicates.txt')
 
     return args
 
@@ -672,7 +761,7 @@ def validate_args_cluster(args, parser) -> argparse.Namespace:
 
 def run(
         cmd: typing.List[str],
-        verbose: bool,
+        verbosity_level: int,
         logger: logging.Logger
     ) -> subprocess.CompletedProcess:
     """Executes a given command as a subprocess and handles logging.
@@ -700,8 +789,8 @@ def run(
     try:
         process = subprocess.run(
             cmd,  
-            stdout=subprocess.DEVNULL, 
-            stderr=None if verbose else subprocess.PIPE,
+            stdout=None if verbosity_level else subprocess.DEVNULL, 
+            stderr=None if verbosity_level else subprocess.PIPE,
             text=True,
             check=True
         )
@@ -714,18 +803,78 @@ def run(
     except Exception as e:
         logger.error(f'Unexpected: {" ".join(cmd)} failed with message: {e}')
         sys.exit(1)  
-    logger.info(f'Done')
+    logger.info(f'Completed')
     return process
 
 
-def cmd_fastasplit(
+def cmd_mfasta_deduplicate(
+        input_paths: typing.List[pathlib.Path],
+        output_path: pathlib.Path,
+        output_duplicates_path: pathlib.Path,
+        add_prefixes: typing.List[pathlib.Path],
+        gzip_output: bool,
+        gzip_level: int,
+        num_threads: int,
+        verbosity_level: int,
+        bin_path: pathlib.Path = BIN_MFASTA
+    ) -> typing.List[str]:
+    """Builds the command for mfasta-tool to deduplicate FASTA files.
+    
+    Args:
+        input_paths (List[Path]):
+            List of paths to the input FASTA files.
+        output_path (Path):
+            Path to the output FASTA file.
+        output_duplicates_path (Path):
+            Path to the output file listing duplicate sequences.
+        add_prefixes (List[Path]):
+            List of prefixes to add to sequence IDs.
+        gzip_output (bool):
+            Whether to compress the output FASTA file.
+        gzip_level (int):
+            Compression level for gzip (1-9).
+        num_threads (int):
+            Number of threads to use in mfasta-tool.
+        bin_path (Path):
+            Path to the mfasta-tool executable.
+    
+    Returns:
+        list: The constructed command as a list of strings.
+
+    """
+    cmd = [
+        f'{bin_path}',
+        'mrds',
+        '-i',
+        ",".join([str(f) for f in input_paths]),
+        '-o',
+        f'{output_path}',
+        '--out-duplicates',
+        f'{output_duplicates_path}',
+        '--remove-duplicates',
+        '--mark-duplicates-orientation',
+        '--rev-comp-as-equivalent',
+        '-t',
+        f'{num_threads}',
+    ]
+    if verbosity_level:
+        cmd.extend(['--verbosity', '1'])
+    if add_prefixes:
+        cmd.extend(['--in-prefixes', ",".join(add_prefixes)])
+    if gzip_output:
+        cmd.extend(['--gzipped-output', '--gzip-level', f'{gzip_level}'])
+    return cmd
+
+
+def cmd_mfasta_split(
         input_fasta: pathlib.Path,
         out_dir: pathlib.Path,
         n: int,
-        verbose: bool,
-        bin_path = BIN_FASTASPLIT
+        num_threads: int,
+        verbosity_level: int,
+        bin_path = BIN_MFASTA
     ) -> typing.List[str]:
-    """Constructs the command line for multi-fasta-split. 
+    """Builds the command for mfasta-tool to split the input FASTA file. 
     
     Args:
         input_fasta (Path):
@@ -734,22 +883,32 @@ def cmd_fastasplit(
             Path to the output directory.
         n (int):
             Number of sequences per output FASTA file.
+        num_threads (int):
+            Number of threads
         bin_path (Path):
-            Path to the multi-fasta-split executable.
+            Path to the mfasta-tool executable.
         
     Returns:
         list: The constructed command as a list of strings.
         
     """
     cmd = [
-        f'{bin_path}', 
-        '-n', f'{n}',
-        f'--verbosity',
-        f'{int(verbose)}',
+        f'{bin_path}',
+        'mrds',
+        '-n',
+        f'{n}',
         '--out-prefix',
         f'{out_dir}/part',
+        '--out-suffix',
+        'fna.gz',
+        '--gzipped-output',
+        '-i',
         f'{input_fasta}',
+        '-t',
+        f'{num_threads}',
     ]
+    if verbosity_level:
+        cmd.extend(['--verbosity', '1'])
     return cmd 
 
 
@@ -763,7 +922,7 @@ def cmd_kmerdb_build(
         num_threads: int,
         bin_path: pathlib.Path = BIN_KMERDB
     ) -> typing.List[str]:
-    """Constructs the command line for Kmer-db build.
+    """Builds the command for Kmer-db build.
 
     Args:
         input_fasta (Path):
@@ -815,7 +974,7 @@ def cmd_kmerdb_all2all(
         num_threads: int,
         bin_path: pathlib.Path = BIN_KMERDB
     ) -> typing.List[str]:
-    """Constructs the command line for Kmer-db all2all.
+    """Builds the command for Kmer-db all2all.
 
     Args:
         db_paths (list[Path]):
@@ -865,7 +1024,7 @@ def cmd_kmerdb_distance(
         num_threads: int,
         bin_path: pathlib.Path = BIN_KMERDB
     ) -> typing.List[str]:
-    """Constructs the command line for Kmer-db distance.
+    """Builds the command for Kmer-db distance.
 
     Args:
         infile_all2all (Path):
@@ -918,10 +1077,10 @@ def cmd_lzani(
         am: int,
         ar: int,
         num_threads: int,
-        verbose: bool,
+        verbosity_level: bool,
         bin_path: pathlib.Path = BIN_LZANI
     ) -> typing.List[str]:
-    """Constructs the command line for LZ-ANI.
+    """Builds the command for LZ-ANI.
 
     Args:
         input_paths (List[Path]):
@@ -989,7 +1148,6 @@ def cmd_lzani(
         f'{output_path}',
         '-t',
         f'{num_threads}',
-        '--verbose', f'{int(verbose) + 1}',
         '--mal', f'{mal}',
         '--msl', f'{msl}',
         '--mrd', f'{mrd}',
@@ -1017,8 +1175,8 @@ def cmd_lzani(
         if value > 0:
             cmd.extend(['--out-filter', f'{name}', f'{value}'])
 
-    if verbose: 
-        cmd.extend(['--verbose', '2'])
+    if verbosity_level: 
+        cmd.extend(['--verbose', f'{verbosity_level + 1}'])
 
     return cmd
 
@@ -1042,7 +1200,7 @@ def cmd_clusty(
         leiden_iterations: int,
         bin_path=BIN_CLUSTY,
     ) -> typing.List[str]:
-    """Constructs the command line for Clusty.
+    """Builds the command for Clusty.
 
     Args:
         input_path (Path):
@@ -1080,7 +1238,7 @@ def cmd_clusty(
         leiden_iterations (int):
             Number of iterations for the Leiden algorithm.
         bin_path (Path):
-            Path to the clusty executable.
+            Path to the Clusty executable.
 
     Returns:
         list: The constructed command as a list of strings.
@@ -1120,7 +1278,7 @@ def cmd_clusty(
     return cmd
 
 
-def vclust_info() -> None:
+def handle_info(args, parser, logger) -> None:
     """    
     Displays the Vclust version, installation paths, and binary dependencies. 
     Checks for the presence and executable status of required binaries.
@@ -1135,23 +1293,22 @@ def vclust_info() -> None:
         SystemExit: If any binary dependencies are missing or not executable.
     
     """
-    # ANSI color codes for terminal output.
-    GREEN = '\033[92m'
-    RED = '\033[91m'
-    RESET = '\033[0m'
-
     binaries = {
         'Kmer-db': BIN_KMERDB,
         'LZ-ANI': BIN_LZANI,
         'Clusty': BIN_CLUSTY,
-        'multi-fasta-split': BIN_FASTASPLIT,
+        'mfasta': BIN_MFASTA,
     }
 
+    vclustpy_size_kb = f'{VCLUST_SCRIPT_PATH.stat().st_size / 1024:.1f} KB'
     output_lines = [
         f'Vclust version {__version__} (Python {platform.python_version()})',
         '',
+        'Citation:',
+        CITATION,
+        '',
         'Installed at:',
-        f'   {pathlib.Path(__file__).resolve()}',
+        f'   {VCLUST_SCRIPT_PATH.resolve()} ({vclustpy_size_kb})',
         f'   {BIN_DIR.resolve()}',
         '',
         'Binary dependencies:',
@@ -1170,19 +1327,19 @@ def vclust_info() -> None:
                 text=True,
                 check=True
             ).stderr.strip()
-            output_lines.append(f'   {name:<20} v{version:<10}')
+            size_mb = f'{path.stat().st_size / 1024 / 1024:.1f} MB'
+            output_lines.append(f'   {name:<20} v{version:<7} ({size_mb})')
         except Exception as e:
             output_lines.append(f'   {name:<20} [error]')
             errors.append((name, e))
 
     # Append the status summary based on any encountered errors.
     output_lines.append('')
-
     if errors:
-        output_lines.append(f'{RED}Status: error{RESET}')
+        output_lines.append(f'\033[31mStatus: error\033[0m')
         output_lines.extend(f"   - {name}: {error}" for name, error in errors)
     else:
-        output_lines.append(f'{GREEN}Status: ready{RESET}')
+        output_lines.append(f'\033[32;1mStatus: ready\033[0m')
 
     # Output the complete information.
     print('\n'.join(output_lines))
@@ -1191,7 +1348,233 @@ def vclust_info() -> None:
         sys.exit(1)
 
 
-class CustomHelpFormatter(argparse.HelpFormatter):
+def handle_deduplicate(args, parser, logger) -> None:
+    """
+    Deduplicates input FASTA files by validating inputs, constructing commands, 
+    and executing the deduplication process.
+
+    Args:
+        args (argparse.Namespace):
+            Parsed command-line arguments.
+        parser (argparse.ArgumentParser):
+            Argument parser for validation.
+        logger (logging.Logger):
+            Logger instance for logging messages.
+
+    """
+    validate_binary(BIN_MFASTA)
+    args = validate_args_deduplicate(args, parser)
+    cmd = cmd_mfasta_deduplicate(
+        input_paths=args.input_path,
+        output_path=args.output_path,
+        output_duplicates_path=args.output_duplicates_path,
+        add_prefixes=args.add_prefixes,
+        gzip_output=args.gzip_output,
+        gzip_level=args.gzip_level,
+        verbosity_level=args.verbosity_level,
+        num_threads=args.num_threads,
+    )
+    run(cmd, args.verbosity_level, logger)
+
+
+def handle_prefilter(args, parser, logger) -> None:
+    """
+    Preprocesses FASTA inputs by building Kmer-db databases and computing 
+    pairwise distances between sequences.
+
+    Args:
+        args (argparse.Namespace):
+            Parsed command-line arguments.
+        parser (argparse.ArgumentParser):
+            Argument parser for validation.
+        logger (logging.Logger):
+            Logger instance for logging messages.
+
+    """
+    validate_binary(BIN_KMERDB)
+    args = validate_args_prefilter(args, parser)
+    args = validate_args_fasta_input(args, parser)
+
+    out_dir = args.output_path.parent
+
+    with tempfile.TemporaryDirectory(dir=out_dir) as temp_dir:
+        out_dir = pathlib.Path(temp_dir)
+        logger.info(f'Temp directory created: {out_dir}')
+        batches = []
+        # Input is a directory of fasta files.
+        if not args.is_multifasta:
+            batches.append(args.fasta_paths)
+        else:
+            # Split multi-fasta file.
+            if args.batch_size:
+                validate_binary(BIN_MFASTA)
+                cmd = cmd_mfasta_split(
+                    input_fasta=args.input_path, 
+                    out_dir=out_dir,
+                    n=args.batch_size,
+                    verbosity_level=args.verbosity_level,
+                    num_threads=args.num_threads,
+                )
+                run(cmd, args.verbosity_level, logger)
+                batches.extend(sorted([f] for f in out_dir.glob('part_*')))
+            # Do not split multi-fasta file.
+            else:
+                batches.append([args.input_path])
+
+        db_paths = []
+        num_batches = len(batches)
+        for i, batch in enumerate(batches):
+            logger.info(f'Processing batch: {i+1}/{num_batches}')
+            batch_id = f'part_{i:05d}' if num_batches > 1 else 'whole'
+            txt_path = out_dir / f'{batch_id}.txt'
+            db_path = out_dir / f'{batch_id}.kdb'
+
+            # kmer-db build.
+            cmd = cmd_kmerdb_build(
+                input_paths=batch, 
+                txt_path=txt_path,
+                db_path=db_path,
+                is_multisample_fasta=args.is_multifasta,
+                kmer_size=args.k,
+                kmers_fraction=args.kmers_fraction,
+                num_threads=args.num_threads,
+            )
+            run(cmd, args.verbosity_level, logger)
+            db_paths.append(db_path)
+
+            # Delete the partial FASTA file after building the corresponding
+            # partial Kmer-db database.
+            if num_batches > 1:
+                batch[0].unlink()
+
+        # Run kmer-db all2all.
+        db_list_path = out_dir / 'db_list.txt'
+        all2all_path = out_dir / 'all2all.txt'
+        cmd = cmd_kmerdb_all2all(
+            db_paths=db_paths,
+            db_list_path=db_list_path,
+            outfile_all2all=all2all_path,
+            min_kmers=args.min_kmers,
+            min_ident=args.min_ident,
+            max_seqs=args.max_seqs,
+            num_threads=args.num_threads,
+        )
+        run(cmd, args.verbosity_level, logger)
+
+        # Run kmer-db distance.
+        cmd = cmd_kmerdb_distance(
+            infile_all2all=all2all_path,
+            outfile_distance=args.output_path,
+            min_ident=args.min_ident,
+            num_threads=args.num_threads,
+        )
+        run(cmd, args.verbosity_level, logger)    
+
+
+def handle_align(args, parser, logger) -> None:
+    """Aligns input sequences using LZ-ANI and outputs alignment metrics.
+
+    Args:
+        args (argparse.Namespace):
+            Parsed command-line arguments.
+        parser (argparse.ArgumentParser):
+            Argument parser for validation.
+        logger (logging.Logger):
+            Logger instance for logging messages.
+    
+    """
+    validate_binary(BIN_LZANI)
+    args = validate_args_fasta_input(args, parser)
+
+    out_dir = args.output_path.parent
+
+    with tempfile.TemporaryDirectory(dir=out_dir) as temp_dir:
+        out_dir = pathlib.Path(temp_dir)
+        logger.info(f'Temp directory created: {out_dir}')
+        txt_path = out_dir / 'ids.txt'
+
+        # Run lz-ani.
+        cmd = cmd_lzani(
+            input_paths=args.fasta_paths,
+            txt_path=txt_path,
+            output_path=args.output_path,
+            out_format=ALIGN_OUTFMT[args.outfmt],
+            out_aln_path=args.aln_path,
+            out_tani=args.tani,
+            out_gani=args.gani,
+            out_ani=args.ani,
+            out_qcov=args.qcov,
+            out_rcov=args.rcov,
+            filter_file=args.filter_path,
+            filter_threshold=args.filter_threshold,
+            mal=args.mal,
+            msl=args.msl,
+            mrd=args.mrd,
+            mqd=args.mqd,
+            reg=args.reg,
+            aw=args.aw,
+            am=args.am,
+            ar=args.ar,
+            num_threads=args.num_threads,
+            verbosity_level=args.verbosity_level,
+        )
+        run(cmd, args.verbosity_level, logger)
+
+
+def handle_cluster(args, parser, logger):
+    """Clusters sequences based on input metrics and parameters using the 
+    specified clustering algorithm.
+
+    Args:
+        args (argparse.Namespace):
+            Parsed command-line arguments.
+        parser (argparse.ArgumentParser):
+            Argument parser for validation.
+        logger (logging.Logger):
+            Logger instance for logging messages.
+    """
+
+    validate_binary(BIN_CLUSTY)
+    args = validate_args_cluster(args, parser)
+    cmd = cmd_clusty(
+        input_path=args.input_path,
+        ids_path=args.ids_path,
+        output_path=args.output_path,
+        algorithm=args.algorithm,
+        metric=args.metric,
+        tani=args.tani,
+        gani=args.gani,
+        ani=args.ani,
+        qcov=args.qcov,
+        rcov=args.rcov,
+        num_alns=args.num_alns,
+        len_ratio=args.len_ratio,
+        is_representatives=args.representatives,
+        leiden_resolution=args.leiden_resolution,
+        leiden_beta=args.leiden_beta,
+        leiden_iterations=args.leiden_iterations,
+    )
+    run(cmd, args.verbosity_level, logger)
+
+
+class CustomLoggerFormatter(logging.Formatter):
+    """Custom logging formatter with log messages with different colors"""
+
+    FMT = '{asctime} [{levelname:^7}] {message}'
+    FORMATS = {
+        logging.DEBUG: FMT,
+        logging.INFO: f"\33[36m{FMT}\33[0m",
+        logging.WARNING: f"\33[33m{FMT}\33[0m",
+        logging.ERROR: f"\33[31m{FMT}\33[0m",
+    }
+
+    def format(self, record):
+        log_fmt = self.FORMATS[record.levelno]
+        formatter = logging.Formatter(log_fmt, style="{")
+        return formatter.format(record)
+
+
+class CustomHelpFormatter(argparse.RawDescriptionHelpFormatter):
     """Custom help message formatter for argparse."""
 
     def _format_action_invocation(self, action):
@@ -1218,168 +1601,21 @@ def main():
     args = parser.parse_args()
 
     # Initialize logger
-    logger = create_logger(
-        name='vclust',
-        log_level=(logging.INFO 
-                   if (hasattr(args, 'verbose') and args.verbose) 
-                   else logging.ERROR),
-    )
+    logger = create_logger('Vclust', getattr(args, 'verbosity_level', 0))
+    
+    # Command handlers
+    command_map = {
+        'info': handle_info,
+        'deduplicate': handle_deduplicate,
+        'prefilter': handle_prefilter,
+        'align': handle_align,
+        'cluster': handle_cluster,
+    }
 
-    # Info
-    if args.command == 'info':
-        vclust_info()
-    # Prefilter
-    elif args.command == 'prefilter':
-        validate_binary(BIN_KMERDB)
-        args = validate_args_prefilter(args, parser)
-        args = validate_args_fasta_input(args, parser)
+    # Dispatch the appropriate command
+    if args.command in command_map:
+        command_map[args.command](args, parser, logger)
 
-        out_dir = args.output_path.parent / get_uuid()
-        out_dir.mkdir(parents=True, exist_ok=True)
-        logger.info(f'Creating a temp directory: {out_dir}')
-
-        batches = []
-        # Input is a directory of fasta files.
-        if not args.is_multifasta:
-            batches.append(args.fasta_paths)
-        else:
-            # Split multi-fasta file.
-            if args.batch_size:
-                validate_binary(BIN_FASTASPLIT)
-                cmd = cmd_fastasplit(
-                    input_fasta=args.input_path, 
-                    out_dir=out_dir,
-                    n=args.batch_size,
-                    verbose=args.verbose,
-                )
-                p = run(cmd, args.verbose, logger)
-                for f in out_dir.glob('part_*'):
-                    batches.append([f])
-                batches.sort()
-            # Do not split multi-fasta file.
-            else:
-                batches.append([args.input_path])
-
-        num_batches = len(batches)
-        db_paths = []
-        for i, batch in enumerate(batches):
-            logger.info(f'Processing batch: {i+1} / {num_batches}')
-            batch_id = f'part_{i:05d}' if num_batches > 1 else 'whole'
-            txt_path = out_dir / f'{batch_id}.txt'
-            db_path = out_dir / f'{batch_id}.kdb'
-
-            # kmer-db build.
-            cmd = cmd_kmerdb_build(
-                input_paths=batch, 
-                txt_path=txt_path,
-                db_path=db_path,
-                is_multisample_fasta=args.is_multifasta,
-                kmer_size=args.k,
-                kmers_fraction=args.kmers_fraction,
-                num_threads=args.num_threads,
-            )
-            p = run(cmd, args.verbose, logger)
-            db_paths.append(db_path)
-
-            # Regardless of verbosity, always delete the partial FASTA file 
-            # after building the corresponding partial Kmer-db database.
-            if num_batches > 1:
-                batch[0].unlink()
-
-        # Run kmer-db all2all.
-        db_list_path = out_dir / 'db_list.txt'
-        all2all_path = out_dir / 'all2all.txt'
-
-        cmd = cmd_kmerdb_all2all(
-            db_paths=db_paths,
-            db_list_path=db_list_path,
-            outfile_all2all=all2all_path,
-            min_kmers=args.min_kmers,
-            min_ident=args.min_ident,
-            max_seqs=args.max_seqs,
-            num_threads=args.num_threads,
-        )
-        p = run(cmd, args.verbose, logger)
-
-        cmd = cmd_kmerdb_distance(
-            infile_all2all=all2all_path,
-            outfile_distance=args.output_path,
-            min_ident=args.min_ident,
-            num_threads=args.num_threads,
-        )
-        p = run(cmd, args.verbose, logger)
-
-        if not args.keep_temp:
-            if out_dir.exists():
-                logger.info(f'Removing directory: {out_dir}')
-                shutil.rmtree(out_dir)
-
-    # Align
-    elif args.command == 'align':
-        validate_binary(BIN_LZANI)
-        args = validate_args_fasta_input(args, parser)
-
-        out_dir = args.output_path.parent / get_uuid()
-        out_dir.mkdir(parents=True, exist_ok=True)
-        txt_path = out_dir / 'ids.txt'
-
-        logger.info(f'Creating temporary directory: {out_dir}')
-
-        # Run lz-ani.
-        cmd = cmd_lzani(
-            input_paths=args.fasta_paths,
-            txt_path=txt_path,
-            output_path=args.output_path,
-            out_format=ALIGN_OUTFMT[args.outfmt],
-            out_aln_path=args.aln_path,
-            out_tani=args.tani,
-            out_gani=args.gani,
-            out_ani=args.ani,
-            out_qcov=args.qcov,
-            out_rcov=args.rcov,
-            filter_file=args.filter_path,
-            filter_threshold=args.filter_threshold,
-            mal=args.mal,
-            msl=args.msl,
-            mrd=args.mrd,
-            mqd=args.mqd,
-            reg=args.reg,
-            aw=args.aw,
-            am=args.am,
-            ar=args.ar,
-            num_threads=args.num_threads,
-            verbose=args.verbose,
-        )
-        p = run(cmd, args.verbose, logger)
-
-        if out_dir.exists():
-            logger.info(f'Removing directory: {out_dir}')
-            shutil.rmtree(out_dir)
-
-    # Cluster
-    elif args.command == 'cluster':
-        validate_binary(BIN_CLUSTY)
-        args = validate_args_cluster(args, parser)
-
-        cmd = cmd_clusty(
-            input_path=args.input_path,
-            ids_path=args.ids_path,
-            output_path=args.output_path,
-            algorithm=args.algorithm,
-            metric=args.metric,
-            tani=args.tani,
-            gani=args.gani,
-            ani=args.ani,
-            qcov=args.qcov,
-            rcov=args.rcov,
-            num_alns=args.num_alns,
-            len_ratio=args.len_ratio,
-            is_representatives=args.representatives,
-            leiden_resolution=args.leiden_resolution,
-            leiden_beta=args.leiden_beta,
-            leiden_iterations=args.leiden_iterations,
-        )
-        p = run(cmd, args.verbose, logger)
 
 if __name__ == '__main__':
     main()

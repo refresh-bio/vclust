@@ -17,7 +17,7 @@ prep:
 	cp 3rd_party/kmer-db/bin/kmer-db ./bin/
 	cp 3rd_party/lz-ani/bin/lz-ani ./bin/
 	cp 3rd_party/clusty/bin/clusty ./bin/
-	cp 3rd_party/ref-utils/bin/multi-fasta-split ./bin/
+	cp 3rd_party/ref-utils/bin/mfasta-tool ./bin/
 	
 clean:
 	cd 3rd_party/kmer-db && $(MAKE) clean

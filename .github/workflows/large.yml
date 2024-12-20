@@ -4,7 +4,118 @@ on:
   workflow_dispatch:
 
 jobs:
-  dummy:
-    name: dummy
-    runs-on: echo
-  
+
+ ########################################################################################
+  checkout:
+    name: Checkout
+    runs-on: [self-hosted, vclust, x64_linux, large]
+    
+    steps:
+    - name: clean
+      run: rm -rf ${{ github.workspace }}/*
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    - name: Get tags
+      run: | 
+        cd ./3rd_party/clusty/libs/igraph
+        git fetch --prune --unshallow
+        echo exit code $?
+        git tag --list
+      continue-on-error: true
+
+ ########################################################################################
+  download-release:
+    name: Download release
+    needs: checkout
+    strategy:
+      matrix:
+        compiler: [14]
+    runs-on: [self-hosted, vclust, x64_linux, large]
+    
+    steps:
+#    - name: clean
+#      run: rm -rf ${{ github.workspace }}/*
+#    - uses: robinraju/release-downloader@v1.11
+#      with:
+#        latest: true
+#        tarBall: true
+#        extract: true
+#        token: ${{ secrets.MY_TOKEN }}
+#    - name: download
+#      run: ./.github/workflows/github-release-downloader.sh refresh-bio vclust-dev "x64_linux.tar.gz"
+    - name: make
+      run: gmake -j32 CXX=g++-${{matrix.compiler}} CC=gcc-${{matrix.compiler}} PLATFORM=avx2 LEIDEN=true STATIC_LINK=true
+    - name: print info
+      run: python3 vclust.py info 
+
+ ######################################################################################## 
+  ani:
+    name: ANI calculation
+    needs: download-release
+    strategy:
+      fail-fast: false
+      matrix:
+        dataset: [ICTV, IMGVR]
+        include:
+        - dataset: ICTV
+          variant_name: full 
+          prefilter_args: '-k 25 --min-ident 0.7 --min-kmers 20'
+          align_args: '--out-tani 0.70'
+        - dataset: IMGVR_HQ 
+          variant_name: full 
+          prefilter_args: '-k 25 --min-ident 0.95 --min-kmers 20 --batch-size 1000000'
+          align_args: '--out-ani 0.95 --out-qcov 0.85'
+        - dataset: IMGVR 
+          variant_name: fraction_02
+          prefilter_args: '-k 25 --min-ident 0.95 --min-kmers 4 --kmers-fraction 0.2 --batch-size 2000000'
+          align_args: '--out-ani 0.95 --out-qcov 0.85'
+    env:
+      INPUT_DIR: ../../../../vclust/input
+      TEMP_DIR: ../../../../vclust/temp
+       
+    runs-on: [self-hosted, vclust, x64_linux, large] 
+
+    steps:
+    - name: prefilter
+      run: /usr/bin/time -v ./vclust.py prefilter -t 32 -i ${INPUT_DIR}/${{ matrix.dataset }}.fna.gz -o ${TEMP_DIR}/${{ matrix.dataset }}.${{ matrix.variant_name }}.filter ${{ matrix.prefilter_args }}
+    - name: prefilter md5
+      run: md5sum ${TEMP_DIR}/${{ matrix.dataset }}.${{ matrix.variant_name }}.filter
+    - name: align
+      run: /usr/bin/time -v ./vclust.py align -t 32 -i ${INPUT_DIR}/${{ matrix.dataset }}.fna.gz -o ${TEMP_DIR}/${{ matrix.dataset }}.${{ matrix.variant_name }}.ani.tsv --filter ${TEMP_DIR}/${{ matrix.dataset }}.${{ matrix.variant_name }}.filter ${{ matrix.align_args }}
+    - name: align md5
+      run: md5sum ${TEMP_DIR}/${{ matrix.dataset }}.${{ matrix.variant_name }}.ani.tsv ${TEMP_DIR}/${{ matrix.dataset }}.${{ matrix.variant_name }}.ani.ids.tsv
+ 
+ ######################################################################################## 
+  clustering:
+    name: clustering
+    needs: ani
+    strategy:
+      fail-fast: false
+      matrix:
+        dataset: [ICTV, IMGVR, IMGVR_HQ]
+        algo_name: [single, complete, set-cover, uclust, cd-hit, leiden_07, leiden_10]
+        include:
+        - {dataset: ICTV, variant_name: full, args: '--metric tani --tani 0.95'}
+        - {dataset: IMGVR, variant_name: fraction_02, args: '--metric ani --ani 0.95 --qcov 0.85'}
+        - {dataset: IMGVR_HQ, variant_name: full, args: '--metric ani --ani 0.95 --qcov 0.85'}
+        - {algo_name: single, algo_cmd: single}
+        - {algo_name: complete, algo_cmd: complete}
+        - {algo_name: set-cover, algo_cmd: set-cover}
+        - {algo_name: uclust, algo_cmd: uclust}
+        - {algo_name: cd-hit, algo_cmd: cd-hit}
+        - {algo_name: leiden_07, algo_cmd: 'leiden --leiden-resolution 0.7'}
+        - {algo_name: leiden_10, algo_cmd: 'leiden --leiden-resolution 1.0'}
+     
+    env:
+      INPUT_DIR: ../../../../vclust/input
+      TEMP_DIR: ../../../../vclust/temp
+       
+    runs-on: [self-hosted, vclust, x64_linux, large] 
+
+    steps:
+    - name: cluster
+      run: /usr/bin/time -v ./vclust.py cluster -i ${TEMP_DIR}/${{ matrix.dataset }}.${{ matrix.variant_name }}.ani.tsv --ids ${TEMP_DIR}/${{ matrix.dataset }}.${{ matrix.variant_name }}.ani.ids.tsv -o ${TEMP_DIR}/${{ matrix.dataset }}.${{ matrix.variant_name }}.${{ matrix.algo_name }}.clusty --algorithm ${{ matrix.algo_cmd }} ${{ matrix.args }}
+    - name: md5
+      run: md5sum ${TEMP_DIR}/${{ matrix.dataset }}.${{ matrix.variant_name }}.${{ matrix.algo_name }}.clusty
+        
