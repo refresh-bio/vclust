@@ -34,7 +34,7 @@ jobs:
       run: | 
         gmake -j CXX=g++-${{matrix.compiler}} CC=gcc-${{matrix.compiler}} STATIC_LINK=true
     - name: tar artifacts
-      run: tar -cvf vclust.tar ./vclust.py ./test.py ./example ./bin/kmer-db ./bin/lz-ani ./bin/clusty ./bin/multi-fasta-split
+      run: tar -cvf vclust.tar ./vclust.py ./test.py ./example ./bin/kmer-db ./bin/lz-ani ./bin/clusty ./bin/mfasta-tool
     
     - uses: actions/upload-artifact@v4
       with:
