@@ -96,7 +96,7 @@ The Vclust documentation is available on the [GitHub Wiki](https://github.com/re
 
 ## Citation
 
-Zielezinski A, Gudyś A, Barylski J, Siminski K, Rozwalak P, Dutilh BE, Deorowicz S. *Ultrafast and accurate sequence alignment and clustering of viral genomes*. bioRxiv [[doi:10.1101/2024.06.27.601020](https://www.biorxiv.org/content/10.1101/2024.06.27.601020)].
+Zielezinski A, Gudyś A, Barylski J, Siminski K, Rozwalak P, Dutilh BE, Deorowicz S. Ultrafast and accurate sequence alignment and clustering of viral genomes. Nat Methods. [https://doi.org/10.1038/s41592-025-02701-7](https://doi.org/10.1038/s41592-025-02701-7)
 
 ## License
 

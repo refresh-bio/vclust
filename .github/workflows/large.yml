@@ -8,7 +8,7 @@ jobs:
  ########################################################################################
   checkout:
     name: Checkout
-    runs-on: [self-hosted, vclust, x64_linux, large]
+    runs-on: [self-hosted, x64_linux, large]
     
     steps:
     - name: clean
@@ -31,7 +31,7 @@ jobs:
     strategy:
       matrix:
         compiler: [14]
-    runs-on: [self-hosted, vclust, x64_linux, large]
+    runs-on: [self-hosted, x64_linux, large]
     
     steps:
 #    - name: clean
@@ -74,7 +74,7 @@ jobs:
       INPUT_DIR: ../../../../vclust/input
       TEMP_DIR: ../../../../vclust/temp
        
-    runs-on: [self-hosted, vclust, x64_linux, large] 
+    runs-on: [self-hosted, x64_linux, large] 
 
     steps:
     - name: prefilter
@@ -111,7 +111,7 @@ jobs:
       INPUT_DIR: ../../../../vclust/input
       TEMP_DIR: ../../../../vclust/temp
        
-    runs-on: [self-hosted, vclust, x64_linux, large] 
+    runs-on: [self-hosted, x64_linux, large] 
 
     steps:
     - name: cluster

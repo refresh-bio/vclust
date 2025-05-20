@@ -16,11 +16,11 @@ import sys
 import tempfile
 import typing
 
-__version__ = '1.3.0'
+__version__ = '1.3.1'
 
-CITATION = '''Zielezinski A, Gudys A et al. (2024) 
+CITATION = '''Zielezinski A, Gudys A et al. (2025) 
 Ultrafast and accurate sequence alignment and clustering of viral genomes. 
-bioRxiv. doi: 10.1101/2024.06.27.601020'''
+Nat Methods. doi: https://doi.org/10.1038/s41592-025-02701-7'''
 
 DEFAULT_THREAD_COUNT = min(multiprocessing.cpu_count(), 64)
 
