@@ -6,8 +6,7 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 
-[![PyPI - Total Downloads](https://static.pepy.tech/personalized-badge/vclust?period=total&units=abbreviation&left_color=grey&right_color=green&left_text=PyPI%20total%20downloads)](https://www.pepy.tech/projects/vclust)
-[![PyPI - Downloads](https://img.shields.io/pypi/dm/vclust?label=PyPI%20downloads)](https://pypi.org/project/vclust/)
+[![PyPI downloads](https://static.pepy.tech/personalized-badge/vclust?period=total&units=abbreviation&left_color=grey&right_color=green&left_text=PyPI%20total%20downloads)](https://www.pepy.tech/projects/vclust)
 [![GitHub downloads](https://img.shields.io/github/downloads/refresh-bio/vclust/total.svg?style=flag&label=GitHub%20downloads)](https://github.com/refresh-bio/vclust/releases)
 [![Bioconda downloads](https://img.shields.io/conda/dn/bioconda/vclust.svg?style=flag&label=Bioconda%20downloads)](https://anaconda.org/bioconda/vclust)
 
@@ -16,6 +15,9 @@
 ![Apple M](https://img.shields.io/static/v1?label=%E2%80%8B&message=Apple%20M&color=yellow&logo=Apple&logoColor=white)
 ![Linux](https://img.shields.io/static/v1?label=%E2%80%8B&message=Linux&color=00A98F&logo=linux&logoColor=white)
 ![macOS](https://img.shields.io/badge/%E2%80%8B-macOS-00A98F?logo=apple)
+[![WebInterface](https://img.shields.io/badge/%20-Web%20app-blue.svg?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2MDAgNjAwIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJNNDUwIDQwMEgxODBjLTYwIDAtMTEwLTQ1LTExMC0xMDAgMC01MiA0My05NSA5Ny0xMDAgMjEtNzQgODgtMTMwIDE2OC0xMzAgNzkgMCAxNDYgNTQgMTY4IDEyNSA2NiAzIDEyMiA1MCAxMjIgMTA1IDAgNTgtNTEgMTAwLTE3NSAxMDB6Ii8+PC9zdmc+)](https://afproject.org/vclust/)
+
+[![Nat Methods 10.1038/s41592-025-02701-7](https://img.shields.io/badge/Nat%20Methods%202025-10.1038%2Fs41592--025--02701--7-blue)](https://doi.org/10.1038/s41592-025-02701-7)
 
 Vclust is an alignment-based tool for fast and accurate calculation of Average Nucleotide Identity (ANI) between complete or metagenomically-assembled viral genomes. The tool also performs ANI-based clustering of genomes according to standards recommended by international virus consortia, including *International Committee on Taxonomy of Viruses* (ICTV) and *Minimum Information about an Uncultivated Virus Genome* (MIUViG). 
 
